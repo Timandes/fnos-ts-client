@@ -1,1 +1,28 @@
-{"name": "tsfnos", "version": "0.10.0", "description": "TypeScript client for Fnos WebSocket communication", "main": "dist/index.js", "types": "dist/index.d.ts", "scripts": {"build": "tsc", "test": "node --test dist/test/**/*.test.js", "test:watch": "node --test --watch dist/test/**/*.test.js", "example": "tsx examples/demo.ts"}, "keywords": ["fnos", "websocket", "client", "typescript"], "author": "", "license": "Apache-2.0", "dependencies": {"ws": "^8.18.0"}, "devDependencies": {"@types/node": "^22.10.2", "@types/ws": "^8.5.13", "tsx": "^4.19.2", "typescript": "^5.7.2"}}
+{
+  "name": "fnos",
+  "version": "0.1.0",
+  "description": "TypeScript client for Fnos WebSocket communication",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/test/**/*.test.js",
+    "test:watch": "node --test --watch dist/test/**/*.test.js",
+    "example": "tsx examples/demo.ts"
+  },
+  "keywords": [
+    "fnos",
+    "websocket",
+    "client",
+    "typescript"
+  ],
+  "author": "Timandes White",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Timandes/fnos-ts-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Timandes/fnos-ts-client/issues"
+  },
+  "homepage": "https://github.com/Timandes/fnos-ts-client#readme", "dependencies": {"ws": "^8.18.0"}, "devDependencies": {"@types/node": "^22.10.2", "@types/ws": "^8.5.13", "tsx": "^4.19.2", "typescript": "^5.7.2"}}

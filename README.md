@@ -1,4 +1,4 @@
-# tsfnos
+# fnos
 
 飞牛 fnOS 的 TypeScript SDK。
 
@@ -7,12 +7,12 @@
 ## 项目信息
 
 - **源代码仓库**: [https://github.com/Timandes/pyfnos](https://github.com/Timandes/pyfnos) (Python 版本参考)
-- **版本**: 0.10.0
+- **版本**: 0.1.0
 
 ## 项目结构
 
 ```
-tsfnos/
+fnos/
 ├── src/
 │   ├── client.ts           # FnosClient 核心类
 │   ├── crypto.ts           # 加密工具类 (RSA + AES + HMAC)
