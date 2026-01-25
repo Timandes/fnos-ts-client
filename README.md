@@ -6,7 +6,7 @@
 
 ## 项目信息
 
-- **源代码仓库**: [https://github.com/Timandes/pyfnos](https://github.com/Timandes/pyfnos) (Python 版本参考)
+- **源代码仓库**: [https://github.com/Timandes/fnos-ts-client](https://github.com/Timandes/fnos-ts-client)
 - **版本**: 0.1.0
 
 ## 项目结构
