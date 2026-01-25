@@ -1,0 +1,7 @@
+src/
+examples/
+*.ts
+tsconfig.json
+*.log
+.DS_Store
+coverage/
