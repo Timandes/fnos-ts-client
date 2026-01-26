@@ -4,6 +4,9 @@
 
 *注意：这个 SDK 非官方提供。*
 
+[![npm version](https://badge.fury.io/js/fnos.svg)](https://www.npmjs.com/package/fnos)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 ## 项目信息
 
 - **源代码仓库**: [https://github.com/Timandes/fnos-ts-client](https://github.com/Timandes/fnos-ts-client)
