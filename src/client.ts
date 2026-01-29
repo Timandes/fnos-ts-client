@@ -246,12 +246,7 @@ export class FnosClient {
         // 设置连接状态为已连接
         this.connected = true;
         console.log('WebSocket连接已建立');
-        // 设置连接future完成
-        if (this.connectResolve) {
-          this.connectResolve(true);
-          this.connectResolve = null;
-        }
-        // 发送第二个请求
+        // 发送第二个请求（等待第二个请求响应后再完成Promise）
         this.sendSecondRequest();
       } else if ('data' in data && 'hostName' in data.data) {
         // 这是第二个请求的响应（获取主机名）
@@ -261,6 +256,11 @@ export class FnosClient {
         console.log(`Trim版本: ${this.trimVersion}`);
         // 启动心跳机制
         this.startHeartbeat();
+        // 设置连接future完成（在心跳启动后）
+        if (this.connectResolve) {
+          this.connectResolve(true);
+          this.connectResolve = null;
+        }
       } else if ('res' in data && data.res === 'pong') {
         // 这是心跳响应
         console.log('收到心跳响应: pong');
