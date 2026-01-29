@@ -26,8 +26,8 @@ async function main() {
   const endpoint = args.find((arg) => arg.startsWith('-e='))?.split('=')[1] || args.find((arg) => arg.startsWith('--endpoint='))?.split('=')[1] || 'your-custom-endpoint.com:5666';
 
   if (!user || !password) {
-    console.error('错误: 必须提供 --user 和 --password 参数');
-    console.error('用法: tsx examples/reconnect.ts --user=<用户名> --password=<密码> [-e=<服务器地址>]');
+    console.error(`用法: tsx examples/reconnect.ts --user=<用户名> --password=<密码> [-e=<服务器地址>]`);
+    console.error(`错误: 必须提供 --user 和 --password 参数`);
     process.exit(1);
   }
 
