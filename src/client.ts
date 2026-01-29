@@ -16,6 +16,7 @@ import WebSocket from 'ws';
 import { randomBytes } from 'crypto';
 import { Crypto } from './crypto.js';
 import { NotConnectedError } from './exceptions.js';
+import logger from './logger.js';
 
 export type ConnectionType = 'main' | 'timer' | 'file';
 
@@ -154,7 +155,7 @@ export class FnosClient {
       const rawDecryptedSecret = Crypto.aesDecryptWithPadding(rawSecret, this.aesKey, this.iv);
       return Crypto.base64Encode(rawDecryptedSecret);
     } catch (e) {
-      console.error(`解密登录secret失败: ${e}`);
+      logger.error(`解密登录secret失败: ${e}`);
       return null;
     }
   }
@@ -184,7 +185,7 @@ export class FnosClient {
         }, timeout);
 
         this.ws.on('open', () => {
-          console.log('WebSocket连接已建立');
+          logger.info('WebSocket连接已建立');
           // 发送第一个请求获取RSA公钥
           this.sendFirstRequest();
         });
@@ -196,14 +197,14 @@ export class FnosClient {
             try {
               this.onMessageCallback(message);
             } catch (e) {
-              console.warn(`外部消息回调函数出错: ${e}`);
+              logger.warn(`外部消息回调函数出错: ${e}`);
             }
           }
           this.processMessage(message);
         });
 
         this.ws.on('close', () => {
-          console.log('WebSocket连接已关闭');
+          logger.info('WebSocket连接已关闭');
           this.connected = false;
           this.stopHeartbeat = true;
           if (this.heartbeatTimer) {
@@ -213,7 +214,7 @@ export class FnosClient {
         });
 
         this.ws.on('error', (error: Error) => {
-          console.error(`WebSocket错误: ${error.message}`);
+          logger.error(`WebSocket错误: ${error.message}`);
           this.connected = false;
           clearTimeout(timeoutTimer);
           if (this.connectReject) {
@@ -221,13 +222,12 @@ export class FnosClient {
           }
         });
       } catch (e) {
-        console.error(`连接失败: ${e}`);
-        this.connected = false;
-        if (this.connectReject) {
-          this.connectReject(e);
-        }
-      }
-    });
+            logger.error(`连接失败: ${e}`);
+            this.connected = false;
+            if (this.connectReject) {
+              this.connectReject(e);
+            }
+          }    });
   }
 
   /**
@@ -241,19 +241,19 @@ export class FnosClient {
         // 这是第一个请求的响应（获取RSA公钥）
         this.publicKey = data.pub;
         this.sessionId = data.si;
-        console.log(`已获取RSA公钥`);
-        console.log(`会话ID: ${data.si}`);
+        logger.debug(`已获取RSA公钥`);
+        logger.debug(`会话ID: ${data.si}`);
         // 设置连接状态为已连接
         this.connected = true;
-        console.log('WebSocket连接已建立');
+        logger.info('WebSocket连接已建立');
         // 发送第二个请求（等待第二个请求响应后再完成Promise）
         this.sendSecondRequest();
       } else if ('data' in data && 'hostName' in data.data) {
         // 这是第二个请求的响应（获取主机名）
         this.hostName = data.data.hostName;
         this.trimVersion = data.data.trimVersion;
-        console.log(`主机名: ${this.hostName}`);
-        console.log(`Trim版本: ${this.trimVersion}`);
+        logger.debug(`主机名: ${this.hostName}`);
+        logger.debug(`Trim版本: ${this.trimVersion}`);
         // 启动心跳机制
         this.startHeartbeat();
         // 设置连接future完成（在心跳启动后）
@@ -263,7 +263,7 @@ export class FnosClient {
         }
       } else if ('res' in data && data.res === 'pong') {
         // 这是心跳响应
-        console.log('收到心跳响应: pong');
+        logger.debug('收到心跳响应: pong');
       } else if ('longToken' in data && 'result' in data && data.result === 'succ') {
         // 这是账号密码登录响应
         this.loginResponse = data;
@@ -272,13 +272,13 @@ export class FnosClient {
           this.decryptedSecret = this.decryptLoginSecret(data.secret);
           this.token = data.token;
           this.longToken = data.longToken;
-          console.log(`服务器返回的secret: ${this.decryptedSecret?.substring(0, 20)}...`);
+          logger.debug(`服务器返回的secret: ${this.decryptedSecret?.substring(0, 20)}...`);
         }
         if (this.loginResolve) {
           this.loginResolve(this.loginResponse!);
           this.loginResolve = null;
         }
-        console.log('登录成功');
+        logger.info('登录成功');
       } else if ('result' in data && data.result === 'fail' && this.loginReqid && 'reqid' in data && data.reqid === this.loginReqid) {
         // 登录失败
         this.loginResponse = data;
@@ -286,7 +286,7 @@ export class FnosClient {
           this.loginReject(new Error(data.msg || data.errmsg || '未知错误'));
           this.loginReject = null;
         }
-        console.error(`登录失败: ${data.msg || data.errmsg || '未知错误'}`);
+        logger.error(`登录失败: ${data.msg || data.errmsg || '未知错误'}`);
       } else {
         // 检查消息中是否包含reqid，这可能是待处理请求的响应
         if ('reqid' in data) {
@@ -295,12 +295,12 @@ export class FnosClient {
           if (pending) {
             this.pendingRequests.delete(reqid);
             pending.future.resolve(data);
-            console.log(`收到待处理请求的响应: ${reqid}`);
+            logger.debug(`收到待处理请求的响应: ${reqid}`);
           } else {
-            console.warn(`收到未知请求ID的响应: ${reqid}`);
+            logger.warn(`收到未知请求ID的响应: ${reqid}`);
           }
         } else {
-          console.warn(`收到未知消息: ${message}`);
+          logger.warn(`收到未知消息: ${message}`);
         }
       }
     } catch (e) {
@@ -310,7 +310,7 @@ export class FnosClient {
         this.pendingRequests.delete(reqId);
         break;
       }
-      console.error(`无法解析消息: ${message}`);
+      logger.error(`无法解析消息: ${message}`);
     }
   }
 
@@ -320,7 +320,7 @@ export class FnosClient {
   private sendMessage(message: any): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       const messageJson = JSON.stringify(message);
-      console.log(`Sending message: ${messageJson}`);
+      logger.debug(`Sending message: ${messageJson}`);
       this.ws.send(messageJson);
     }
   }
@@ -360,7 +360,7 @@ export class FnosClient {
           req: 'ping',
         };
         this.sendMessage(message);
-        console.log('已发送心跳请求');
+        logger.debug('已发送心跳请求');
       }
     }, 30000); // 每30秒发送一次
   }
@@ -386,11 +386,11 @@ export class FnosClient {
 
       // 加密登录数据
       const encryptedData = this.encryptLoginData(username, password);
-      console.log('Sending login request');
 
       // 发送登录请求并等待响应
       this.loginResolve = resolve;
       this.loginReject = reject;
+      logger.debug('Sending login request');
       this.sendMessage(encryptedData);
 
       // 设置超时
@@ -427,7 +427,7 @@ export class FnosClient {
 
     // 登录失败，使用 long_token 登录
     if (response.errno === 135168) {
-      console.log('使用 long_token 登录');
+      logger.info('使用 long_token 登录');
       const payload2 = {
         deviceType: 'Browser',
         deviceName: 'Mac OS-Safari',
@@ -488,16 +488,16 @@ export class FnosClient {
     }
 
     // 计算iz(e) + e
-    console.log(`Sending msg: ${e}`);
+    logger.debug(`Sending msg: ${e}`);
     const izResult = this.iz(e);
-    console.log(`Calculated iz-result: ${izResult}`);
+    logger.debug(`Calculated iz-result: ${izResult}`);
     const requestData = izResult + e;
-    console.log(`Sending msg to channel: ${requestData}`);
+    logger.debug(`Sending msg to channel: ${requestData}`);
 
     // 发送数据
     if (this.ws) {
       this.ws.send(requestData);
-      console.log(`已发送请求: ${requestData}`);
+      logger.debug(`已发送请求: ${requestData}`);
     }
   }
 
@@ -573,7 +573,7 @@ export class FnosClient {
    */
   async reconnect(connectTimeout: number = 3000, loginTimeout: number = 10000): Promise<boolean> {
     if (this.connected) {
-      console.log('已经连接，无需重连');
+      logger.info('已经连接，无需重连');
       return true;
     }
 
@@ -585,7 +585,7 @@ export class FnosClient {
       throw new Error('没有保存的用户名和密码用于重连');
     }
 
-    console.log('开始重连...');
+    logger.info('开始重连...');
 
     // 先连接
     await this.connect(this.endpoint, connectTimeout);
@@ -594,7 +594,7 @@ export class FnosClient {
     const loginResult = await this.login(this.username, this.password, loginTimeout);
 
     if (loginResult?.result === 'succ') {
-      console.log('重连成功');
+      logger.info('重连成功');
       return true;
     } else {
       throw new Error('重连失败：登录失败');

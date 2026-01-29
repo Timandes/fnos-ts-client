@@ -25,4 +25,16 @@
   "bugs": {
     "url": "https://github.com/Timandes/fnos-ts-client/issues"
   },
-  "homepage": "https://github.com/Timandes/fnos-ts-client#readme", "dependencies": {"ws": "^8.18.0"}, "devDependencies": {"@types/node": "^22.10.2", "@types/ws": "^8.5.13", "tsx": "^4.19.2", "typescript": "^5.7.2"}}
+  "homepage": "https://github.com/Timandes/fnos-ts-client#readme",
+  "dependencies": {
+    "winston": "^3.19.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/winston": "^2.4.4",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
