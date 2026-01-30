@@ -10,7 +10,8 @@
 ## 项目信息
 
 - **源代码仓库**: [https://github.com/Timandes/fnos-ts-client](https://github.com/Timandes/fnos-ts-client)
-- **版本**: 0.1.0
+- **问题追踪**: [GitHub Issues](https://github.com/Timandes/fnos-ts-client/issues)
+- **更新日志**: [CHANGELOG.md](CHANGELOG.md)
 
 ## 项目结构
 

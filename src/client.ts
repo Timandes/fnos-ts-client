@@ -615,6 +615,11 @@ export class FnosClient {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
+    // 清理所有待处理的请求，防止 Promise 无法 resolve/reject 导致程序无法退出
+    for (const [reqid, pending] of this.pendingRequests.entries()) {
+      pending.future.reject(new Error('连接已关闭'));
+    }
+    this.pendingRequests.clear();
   }
 
   /**
