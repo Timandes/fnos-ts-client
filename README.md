@@ -52,19 +52,19 @@ fnos/
 ## 安装
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## 编译
 
 ```bash
-npm run build
+pnpm build
 ```
 
 ## 运行测试
 
 ```bash
-npm test
+pnpm test
 ```
 
 ## 使用示例
@@ -100,13 +100,13 @@ main().catch(console.error);
 
 ```bash
 # 基本示例
-npx tsx examples/demo.ts --user=SystemMonitor --password=password -e=nas-9.timandes.net:5666
+pnpm tsx examples/demo.ts --user=SystemMonitor --password=password -e=nas-9.timandes.net:5666
 
 # 资源监控示例
-npx tsx examples/resource_monitor.ts --user=SystemMonitor --password=password -e=nas-9.timandes.net:5666
+pnpm tsx examples/resource_monitor.ts --user=SystemMonitor --password=password -e=nas-9.timandes.net:5666
 
 # 用户模块示例
-npx tsx examples/user.ts --user=SystemMonitor --password=password -e=nas-9.timandes.net:5666
+pnpm tsx examples/user.ts --user=SystemMonitor --password=password -e=nas-9.timandes.net:5666
 
 # 其他示例...
 ```
