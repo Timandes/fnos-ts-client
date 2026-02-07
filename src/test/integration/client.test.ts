@@ -14,7 +14,7 @@
 
 import { describe, it, mock, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
-import { FnosClient } from '../client.js';
+import { FnosClient } from '../../client.js';
 
 describe('FnosClient - Timer Cleanup', () => {
   let client: FnosClient;

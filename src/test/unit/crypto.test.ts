@@ -14,7 +14,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { Crypto } from '../crypto.js';
+import { Crypto } from '../../crypto.js';
 
 describe('Crypto', () => {
   describe('randomBytes', () => {
