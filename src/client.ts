@@ -52,6 +52,7 @@ export class FnosClient {
   private connected = false;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private stopHeartbeat = false;
+  private connectTimeoutTimer: NodeJS.Timeout | null = null;
   private loginResponse: LoginResponse | null = null;
   private loginResolve: ((value: LoginResponse) => void) | null = null;
   private loginReject: ((reason?: any) => void) | null = null;
@@ -174,13 +175,24 @@ export class FnosClient {
         this.ws = new WebSocket(`ws://${endpoint}/websocket?type=${this.type}`);
 
         // 设置超时
-        const timeoutTimer = setTimeout(() => {
+        this.connectTimeoutTimer = setTimeout(() => {
           if (this.connectReject) {
             this.connectReject(new Error('连接超时'));
+            this.connectReject = null;
           }
           this.connected = false;
           if (this.ws) {
-            this.ws.close();
+            try {
+              this.ws.close();
+            } catch (e) {
+              logger.error(`关闭 WebSocket 失败: ${e}`);
+            }
+            this.ws = null;  // 清理引用
+          }
+          this.stopHeartbeat = true;
+          if (this.heartbeatTimer) {
+            clearInterval(this.heartbeatTimer);
+            this.heartbeatTimer = null;
           }
         }, timeout);
 
@@ -205,21 +217,21 @@ export class FnosClient {
 
         this.ws.on('close', () => {
           logger.info('WebSocket连接已关闭');
-          this.connected = false;
-          this.stopHeartbeat = true;
-          if (this.heartbeatTimer) {
-            clearInterval(this.heartbeatTimer);
-            this.heartbeatTimer = null;
-          }
+          this.handleDisconnection();
         });
 
         this.ws.on('error', (error: Error) => {
           logger.error(`WebSocket错误: ${error.message}`);
           this.connected = false;
-          clearTimeout(timeoutTimer);
+          if (this.connectTimeoutTimer) {
+            clearTimeout(this.connectTimeoutTimer);
+            this.connectTimeoutTimer = null;
+          }
           if (this.connectReject) {
             this.connectReject(error);
+            this.connectReject = null;
           }
+          this.handleDisconnection();
         });
       } catch (e) {
             logger.error(`连接失败: ${e}`);
@@ -260,6 +272,11 @@ export class FnosClient {
         if (this.connectResolve) {
           this.connectResolve(true);
           this.connectResolve = null;
+        }
+        // 清除连接超时定时器
+        if (this.connectTimeoutTimer) {
+          clearTimeout(this.connectTimeoutTimer);
+          this.connectTimeoutTimer = null;
         }
       } else if ('res' in data && data.res === 'pong') {
         // 这是心跳响应
@@ -354,15 +371,29 @@ export class FnosClient {
    */
   private startHeartbeat(): void {
     this.stopHeartbeat = false;
-    this.heartbeatTimer = setInterval(() => {
-      if (!this.stopHeartbeat && this.connected) {
+
+    // 立即发送第一个心跳包
+    const sendHeartbeat = () => {
+      if (!this.stopHeartbeat && this.isConnected()) {
         const message = {
           req: 'ping',
         };
-        this.sendMessage(message);
-        logger.debug('已发送心跳请求');
+        try {
+          this.sendMessage(message);
+          logger.debug('已发送心跳请求');
+        } catch (e) {
+          logger.error(`发送心跳失败: ${e}`);
+          // 心跳发送失败，可能连接已断开
+          this.handleDisconnection();
+        }
       }
-    }, 30000); // 每30秒发送一次
+    };
+
+    // 立即发送第一个心跳
+    sendHeartbeat();
+
+    // 然后每30秒发送一次
+    this.heartbeatTimer = setInterval(sendHeartbeat, 30000);
   }
 
   /**
@@ -606,7 +637,11 @@ export class FnosClient {
    */
   close(): void {
     if (this.ws) {
-      this.ws.close();
+      try {
+        this.ws.close();
+      } catch (e) {
+        logger.error(`关闭 WebSocket 失败: ${e}`);
+      }
       this.ws = null;
     }
     this.connected = false;
@@ -614,6 +649,10 @@ export class FnosClient {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
+    }
+    if (this.connectTimeoutTimer) {
+      clearTimeout(this.connectTimeoutTimer);
+      this.connectTimeoutTimer = null;
     }
     // 清理所有待处理的请求，防止 Promise 无法 resolve/reject 导致程序无法退出
     for (const [reqid, pending] of this.pendingRequests.entries()) {
@@ -624,8 +663,24 @@ export class FnosClient {
 
   /**
    * 获取连接状态
+   * 检查连接标志和 WebSocket 实际状态，确保返回准确的连接状态
    */
   isConnected(): boolean {
-    return this.connected;
+    return this.connected &&
+           this.ws !== null &&
+           this.ws.readyState === WebSocket.OPEN;
+  }
+
+  /**
+   * 处理连接断开
+   * 统一清理资源，更新连接状态
+   */
+  private handleDisconnection(): void {
+    this.connected = false;
+    this.stopHeartbeat = true;
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 }

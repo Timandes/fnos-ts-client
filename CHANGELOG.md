@@ -5,9 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2025-01-30
+## [0.3.0] - 2026-02-07
 
 ### Fixed
+- 修复连接超时定时器未清除导致连接在 3 秒后被主动关闭的问题
+- 修复心跳机制延迟启动的问题，现在会在启动时立即发送第一个心跳包
+- 改进 `isConnected()` 方法，检查 WebSocket 实际状态确保准确性
 - 修复调用 `client.close()` 方法时程序卡住无法退出的问题
 
 ## [0.2.0] - 2026-01-29
