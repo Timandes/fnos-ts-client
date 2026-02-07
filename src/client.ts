@@ -27,6 +27,7 @@ interface PendingRequest {
   };
   req: string;
   payload: any;
+  timeoutTimer: NodeJS.Timeout | null;
 }
 
 interface MessageCallback {
@@ -57,6 +58,7 @@ export class FnosClient {
   private loginResolve: ((value: LoginResponse) => void) | null = null;
   private loginReject: ((reason?: any) => void) | null = null;
   private loginReqid: string | null = null;
+  private loginTimeoutTimer: NodeJS.Timeout | null = null;
   private decryptedSecret: string | null = null;
   private aesKey: Buffer | null = null;
   private iv: Buffer | null = null;
@@ -291,6 +293,11 @@ export class FnosClient {
           this.longToken = data.longToken;
           logger.debug(`服务器返回的secret: ${this.decryptedSecret?.substring(0, 20)}...`);
         }
+        // 清除登录超时定时器
+        if (this.loginTimeoutTimer) {
+          clearTimeout(this.loginTimeoutTimer);
+          this.loginTimeoutTimer = null;
+        }
         if (this.loginResolve) {
           this.loginResolve(this.loginResponse!);
           this.loginResolve = null;
@@ -299,6 +306,11 @@ export class FnosClient {
       } else if ('result' in data && data.result === 'fail' && this.loginReqid && 'reqid' in data && data.reqid === this.loginReqid) {
         // 登录失败
         this.loginResponse = data;
+        // 清除登录超时定时器
+        if (this.loginTimeoutTimer) {
+          clearTimeout(this.loginTimeoutTimer);
+          this.loginTimeoutTimer = null;
+        }
         if (this.loginReject) {
           this.loginReject(new Error(data.msg || data.errmsg || '未知错误'));
           this.loginReject = null;
@@ -310,6 +322,11 @@ export class FnosClient {
           const reqid = data.reqid as string;
           const pending = this.pendingRequests.get(reqid);
           if (pending) {
+            // 清除超时定时器
+            if (pending.timeoutTimer) {
+              clearTimeout(pending.timeoutTimer);
+              pending.timeoutTimer = null;
+            }
             this.pendingRequests.delete(reqid);
             pending.future.resolve(data);
             logger.debug(`收到待处理请求的响应: ${reqid}`);
@@ -425,12 +442,13 @@ export class FnosClient {
       this.sendMessage(encryptedData);
 
       // 设置超时
-      const timeoutTimer = setTimeout(() => {
+      this.loginTimeoutTimer = setTimeout(() => {
         this.loginReqid = null;
         if (this.loginReject) {
           this.loginReject(new Error('登录超时'));
           this.loginReject = null;
         }
+        this.loginTimeoutTimer = null;
       }, timeout);
     });
   }
@@ -573,10 +591,12 @@ export class FnosClient {
 
       // 将请求添加到待处理请求列表
       const reqid = this.generateReqid();
+      let timeoutTimer: NodeJS.Timeout | null = null;
       this.pendingRequests.set(reqid, {
         future: future,
         req: req,
         payload: payload,
+        timeoutTimer: null, // 将在下面设置
       });
 
       // 构造请求数据
@@ -588,14 +608,24 @@ export class FnosClient {
       const jsonData = JSON.stringify(payloadData);
       this.request(jsonData).catch((e) => {
         this.pendingRequests.delete(reqid);
+        if (timeoutTimer) {
+          clearTimeout(timeoutTimer);
+          timeoutTimer = null;
+        }
         reject(e);
       });
 
       // 设置超时
-      const timeoutTimer = setTimeout(() => {
+      timeoutTimer = setTimeout(() => {
         this.pendingRequests.delete(reqid);
         reject(new Error(`请求 ${req} 超时`));
       }, timeout);
+
+      // 保存定时器引用到 pendingRequests 中
+      const pending = this.pendingRequests.get(reqid);
+      if (pending) {
+        pending.timeoutTimer = timeoutTimer;
+      }
     });
   }
 
@@ -654,8 +684,17 @@ export class FnosClient {
       clearTimeout(this.connectTimeoutTimer);
       this.connectTimeoutTimer = null;
     }
+    if (this.loginTimeoutTimer) {
+      clearTimeout(this.loginTimeoutTimer);
+      this.loginTimeoutTimer = null;
+    }
     // 清理所有待处理的请求，防止 Promise 无法 resolve/reject 导致程序无法退出
     for (const [reqid, pending] of this.pendingRequests.entries()) {
+      // 清除超时定时器
+      if (pending.timeoutTimer) {
+        clearTimeout(pending.timeoutTimer);
+        pending.timeoutTimer = null;
+      }
       pending.future.reject(new Error('连接已关闭'));
     }
     this.pendingRequests.clear();

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 修复心跳机制延迟启动的问题，现在会在启动时立即发送第一个心跳包
 - 改进 `isConnected()` 方法，检查 WebSocket 实际状态确保准确性
 - 修复调用 `client.close()` 方法时程序卡住无法退出的问题
+- 修复 `login()` 和 `requestPayloadWithResponse()` 方法中超时定时器未清除导致程序延迟退出的问题
 
 ## [0.2.0] - 2026-01-29
 
