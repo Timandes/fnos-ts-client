@@ -1,0 +1,76 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Clone fnos-mock-server
+        run: |
+          git clone https://github.com/Timandes/fnos-mock-server.git ../fnos-mock-server
+
+      - name: Install mock server dependencies
+        working-directory: ../fnos-mock-server
+        run: |
+          pip3 install -r requirements.txt
+
+      - name: Start mock server
+        working-directory: ../fnos-mock-server
+        run: |
+          python3 -m server.main > /tmp/mock-server.log 2>&1 &
+          echo $! > /tmp/mock-server.pid
+          echo "Mock server started with PID: $(cat /tmp/mock-server.pid)"
+
+      - name: Wait for mock server to be ready
+        run: |
+          for i in {1..30}; do
+            if nc -z localhost 5666; then
+              echo "Mock server is ready on port 5666"
+              break
+            fi
+            echo "Waiting for mock server... ($i/30)"
+            sleep 1
+          done
+
+      - name: Install project dependencies
+        run: |
+          npm ci
+
+      - name: Build project
+        run: |
+          npm run build
+
+      - name: Run tests
+        run: |
+          npm test
+
+      - name: Stop mock server
+        if: always()
+        run: |
+          if [ -f /tmp/mock-server.pid ]; then
+            kill $(cat /tmp/mock-server.pid) || true
+            rm /tmp/mock-server.pid
+            echo "Mock server stopped"
+          fi
+
+      - name: Show mock server logs
+        if: always()
+        run: |
+          if [ -f /tmp/mock-server.log ]; then
+            echo "=== Mock Server Logs ==="
+            cat /tmp/mock-server.log
+          fi
