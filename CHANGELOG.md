@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.1] - 2026-02-07
+## [0.2.1] - 2026-02-15
 
 ### Fixed
 - 修复连接超时定时器未清除导致连接在 3 秒后被主动关闭的问题

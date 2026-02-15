@@ -1,7 +1,22 @@
 src/
 examples/
+test/
 *.ts
+!*.d.ts
 tsconfig.json
 *.log
 .DS_Store
 coverage/
+
+# CI/CD
+.github/
+
+# Development docs
+CONNECTION_FIX_SUMMARY.md
+TESTING_GUIDE.md
+plan.md
+spec.md
+tasks.md
+
+# Test files in dist
+dist/test/
