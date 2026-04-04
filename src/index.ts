@@ -34,4 +34,4 @@ export { IscsiManager } from './iscsi_manager.js';
 
 export type { ConnectionType, LoginResponse } from './client.js';
 
-export const version = '0.2.1';
+export const version = '0.3.0';
