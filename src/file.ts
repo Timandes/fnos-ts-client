@@ -76,4 +76,17 @@ export class File {
     const response = await this.client.requestPayloadWithResponse('file.rm', payload, timeout);
     return response;
   }
+
+  /**
+   * 获取文件的 ACL（访问控制列表）信息
+   * @param files 需要查询 ACL 的文件路径列表，格式为 vol{stor_id}/{path}
+   */
+  async getAcl(files: string[], timeout: number = 10000): Promise<any> {
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      throw new Error('files参数必须是非空列表');
+    }
+    const payload = { files: files };
+    const response = await this.client.requestPayloadWithResponse('file.getAcl', payload, timeout);
+    return response;
+  }
 }

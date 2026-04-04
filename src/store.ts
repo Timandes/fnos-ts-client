@@ -66,4 +66,22 @@ export class Store {
     const response = await this.client.requestPayloadWithResponse('stor.state', payload, timeout);
     return response;
   }
+
+  /**
+   * 获取用户存储信息
+   */
+  async getUserStorage(
+    spaceInfo: boolean = false,
+    storInfo: boolean = false,
+    quotaInfo: boolean = false,
+    timeout: number = 10000
+  ): Promise<any> {
+    const payload = {
+      spaceInfo: spaceInfo,
+      storInfo: storInfo,
+      quotaInfo: quotaInfo,
+    };
+    const response = await this.client.requestPayloadWithResponse('stor.getUserStorage', payload, timeout);
+    return response;
+  }
 }

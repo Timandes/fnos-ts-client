@@ -26,7 +26,12 @@ export { SystemInfo } from './system_info.js';
 export { User } from './user.js';
 export { Network } from './network.js';
 export { File } from './file.js';
+export { DockerManager } from './docker_manager.js';
+export { EventLogger } from './event_logger.js';
+export { Share } from './share.js';
+export { Notify } from './notify.js';
+export { IscsiManager } from './iscsi_manager.js';
 
 export type { ConnectionType, LoginResponse } from './client.js';
 
-export const version = '0.10.0';
+export const version = '0.2.1';

@@ -74,6 +74,10 @@ export class FnosClient {
   private token: string | null = null;
   private longToken: string | null = null;
 
+  // SSL 配置
+  private useSsl = false;
+  private skipSslVerify = true;
+
   constructor(type: ConnectionType = 'main') {
     if (type !== 'main' && type !== 'timer' && type !== 'file') {
       throw new Error("type参数必须是'main'、'timer'或'file'");
@@ -164,17 +168,54 @@ export class FnosClient {
   }
 
   /**
-   * 连接到WebSocket服务器
+   * 解析 endpoint，返回 { hostPort, actualUseSsl }
+   *
+   * - 如果 endpoint 以 wss:// 开头，返回去掉前缀的地址和 true
+   * - 如果 endpoint 以 ws:// 开头，返回去掉前缀的地址和 false
+   * - 否则返回原地址和 useSsl 参数值
    */
-  connect(endpoint: string, timeout: number = 3000): Promise<boolean> {
+  private parseEndpoint(endpoint: string, useSsl: boolean): { hostPort: string; actualUseSsl: boolean } {
+    if (endpoint.startsWith('wss://')) {
+      return { hostPort: endpoint.slice(6), actualUseSsl: true };
+    } else if (endpoint.startsWith('ws://')) {
+      return { hostPort: endpoint.slice(5), actualUseSsl: false };
+    }
+    return { hostPort: endpoint, actualUseSsl: useSsl };
+  }
+
+  /**
+   * 连接到WebSocket服务器
+   *
+   * @param endpoint 服务器地址，可以是 "host:port" 格式或带协议前缀 "ws://host:port" / "wss://host:port"
+   * @param timeout 连接超时时间（毫秒）
+   * @param useSsl 是否使用 SSL/WSS 连接（默认 false）
+   * @param skipSslVerify 是否跳过 SSL 证书验证（默认 true）
+   */
+  connect(endpoint: string, timeout: number = 3000, useSsl: boolean = false, skipSslVerify: boolean = true): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      this.endpoint = endpoint;
+      // 解析 endpoint，处理协议前缀
+      const { hostPort, actualUseSsl } = this.parseEndpoint(endpoint, useSsl);
+
+      // 保存连接信息用于重连
+      this.endpoint = hostPort;
+      this.useSsl = actualUseSsl;
+      this.skipSslVerify = skipSslVerify;
+
       this.connectResolve = resolve;
       this.connectReject = reject;
 
       try {
+        // 根据 useSsl 选择协议
+        const protocol = actualUseSsl ? 'wss' : 'ws';
+        const uri = `${protocol}://${hostPort}/websocket?type=${this.type}`;
+
+        // 配置 SSL 选项
+        const wsOptions: WebSocket.ClientOptions = actualUseSsl ? {
+          rejectUnauthorized: !skipSslVerify,
+        } : {};
+
         // 创建WebSocket连接
-        this.ws = new WebSocket(`ws://${endpoint}/websocket?type=${this.type}`);
+        this.ws = new WebSocket(uri, wsOptions);
 
         // 设置超时
         this.connectTimeoutTimer = setTimeout(() => {
@@ -648,8 +689,8 @@ export class FnosClient {
 
     logger.info('开始重连...');
 
-    // 先连接
-    await this.connect(this.endpoint, connectTimeout);
+    // 先连接（使用保存的 SSL 配置）
+    await this.connect(this.endpoint!, connectTimeout, this.useSsl, this.skipSslVerify);
 
     // 再登录
     const loginResult = await this.login(this.username, this.password, loginTimeout);

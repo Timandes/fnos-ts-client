@@ -18,7 +18,7 @@
 ```
 fnos/
 ├── src/
-│   ├── client.ts           # FnosClient 核心类
+│   ├── client.ts           # FnosClient 核心类（支持 SSL/WSS）
 │   ├── crypto.ts           # 加密工具类 (RSA + AES + HMAC)
 │   ├── exceptions.ts       # 异常类
 │   ├── resource_monitor.ts # 资源监控类
@@ -28,11 +28,34 @@ fnos/
 │   ├── user.ts             # 用户类
 │   ├── network.ts          # 网络类
 │   ├── file.ts             # 文件类
+│   ├── docker_manager.ts   # Docker 管理类
+│   ├── event_logger.ts     # 事件日志类
+│   ├── share.ts            # 共享配置类
+│   ├── notify.ts           # 通知类
+│   ├── iscsi_manager.ts    # iSCSI 管理类
+│   ├── logger.ts           # 日志工具类
 │   ├── index.ts            # 主入口文件
 │   └── test/
-│       └── crypto.test.ts  # 加密库单元测试
+│       ├── unit/           # 单元测试
+│       │   ├── client.test.ts
+│       │   └── crypto.test.ts
+│       └── integration/    # 集成测试（连接 fnos-mock-server）
+│           ├── helpers.ts
+│           ├── system_info.test.ts
+│           ├── file.test.ts
+│           ├── store.test.ts
+│           ├── user.test.ts
+│           ├── network.test.ts
+│           ├── resource_monitor.test.ts
+│           └── new_modules.test.ts
 ├── examples/               # 示例脚本
 │   ├── demo.ts
+│   ├── ssl_connect.ts
+│   ├── docker_manager.ts
+│   ├── event_logger.ts
+│   ├── share.ts
+│   ├── notify.ts
+│   ├── iscsi_manager.ts
 │   ├── resource_monitor.ts
 │   ├── resource_monitor_general.ts
 │   ├── user.ts
@@ -96,6 +119,31 @@ async function main() {
 main().catch(console.error);
 ```
 
+### SSL/WSS 连接
+
+```typescript
+import { FnosClient } from './src/index.js';
+
+async function main() {
+  const client = new FnosClient();
+
+  // 方式一: 使用 wss:// 协议前缀（优先级最高）
+  await client.connect('wss://nas-9.timandes.net:5667', 3000, true, true);
+
+  // 方式二: 使用参数指定 SSL
+  await client.connect('nas-9.timandes.net:5667', 3000, true, true);
+  //                                                          useSsl  skipSslVerify
+
+  // 登录
+  const result = await client.login('admin', 'password');
+  console.log('登录结果:', result);
+
+  client.close();
+}
+
+main().catch(console.error);
+```
+
 ### 运行示例脚本
 
 ```bash
@@ -118,7 +166,7 @@ pnpm tsx examples/user.ts --user=SystemMonitor --password=password -e=nas-9.tima
 | 方法名 | 简介 |
 | ---- | ---- |
 | `__init__` | 初始化客户端，支持 type 参数（"main"、"timer"或"file"，默认为"main"） |
-| `connect` | 连接到 WebSocket 服务器（必填参数：endpoint） |
+| `connect` | 连接到 WebSocket 服务器（支持 SSL/WSS，参数：endpoint, timeout, useSsl, skipSslVerify） |
 | `login` | 用户登录方法 |
 | `loginViaToken` | 使用 token 登录方法 |
 | `getDecryptedSecret` | 获取解密后的 secret |
@@ -150,6 +198,44 @@ pnpm tsx examples/user.ts --user=SystemMonitor --password=password -e=nas-9.tima
 | `listDisks` | 列出磁盘信息 |
 | `getDiskSmart` | 获取磁盘 SMART 信息 |
 | `getState` | 获取存储状态信息 |
+| `getUserStorage` | 获取用户存储信息 |
+
+### DockerManager
+
+| 方法名 | 简介 |
+| ---- | ---- |
+| `listComposes` | 获取 Docker Compose 项目列表 |
+| `listContainers` | 获取容器列表 |
+| `stats` | 获取容器统计信息 |
+| `getSystemSettings` | 获取 Docker 系统设置 |
+
+### EventLogger
+
+| 方法名 | 简介 |
+| ---- | ---- |
+| `commonList` | 获取事件日志列表 |
+
+### Share
+
+| 方法名 | 简介 |
+| ---- | ---- |
+| `smbOpt` | 获取 SMB 共享配置信息 |
+
+### Notify
+
+| 方法名 | 简介 |
+| ---- | ---- |
+| `unreadTotal` | 获取未读通知总数 |
+
+### IscsiManager
+
+| 方法名 | 简介 |
+| ---- | ---- |
+| `getConfig` | 获取 iSCSI 配置 |
+| `listInitiators` | 获取 iSCSI Initiator 列表 |
+| `listLuns` | 获取 iSCSI LUN 列表 |
+| `listLunUsergroups` | 获取 iSCSI LUN 用户组列表 |
+| `listTargets` | 获取 iSCSI Target 列表 |
 
 ### SAC
 
@@ -190,6 +276,7 @@ pnpm tsx examples/user.ts --user=SystemMonitor --password=password -e=nas-9.tima
 | `list` | 列出指定目录下的文件和文件夹 |
 | `mkdir` | 创建文件夹 |
 | `remove` | 删除文件或文件夹 |
+| `getAcl` | 获取文件的 ACL（访问控制列表）信息 |
 
 ## 加密实现
 
