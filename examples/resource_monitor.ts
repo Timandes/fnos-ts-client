@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { FnosClient, ResourceMonitor } from '../src/index.js';
+import { loginWithTwofa, parseAuthArgs, printAuthHelp } from './common.js';
 
 function onMessageHandler(message: string): void {
   console.log(`收到消息: ${message}`);
@@ -77,18 +78,11 @@ function parseArgs(args: string[]): Record<string, string | null> {
 async function main() {
   // 从命令行参数获取
   const args = process.argv.slice(2);
-  const parsed = parseArgs(args);
-
-  const user = parsed['user'];
-  const password = parsed['password'];
-  const endpoint = parsed['e'] || parsed['endpoint'] || 'your-custom-endpoint.com:5666';
-
-  if (!user || !password) {
-    console.error(`用法: tsx examples/resource_monitor.ts --user <用户名> --password <密码> [-e <服务器地址>]`);
-    console.error(`  或: tsx examples/resource_monitor.ts --user=<用户名> --password=<密码> [-e=<服务器地址>]`);
-    console.error(`错误: 必须提供 --user 和 --password 参数`);
-    process.exit(1);
+  if (args.includes('--help')) {
+    printAuthHelp('资源监控只读查询');
+    return;
   }
+  const authArgs = parseAuthArgs(args);
 
   const client = new FnosClient();
 
@@ -96,17 +90,23 @@ async function main() {
   client.onMessage(onMessageHandler);
 
   // 连接到服务器（必须指定endpoint）
-  await client.connect(endpoint);
+  await client.connect(
+    authArgs.endpoint, 3000, authArgs.useSsl, authArgs.skipSslVerify,
+  );
 
   if (client.isConnected()) {
     console.log('连接成功，尝试登录...');
     try {
-      // 使用命令行参数中的用户名和密码
-      const result = await client.login(user, password);
+      const result = await loginWithTwofa(client, authArgs);
       console.log('登录结果:', result);
 
       // 创建ResourceMonitor实例
       const resourceMonitor = new ResourceMonitor(client);
+
+      console.log('NPU 资源信息:', await resourceMonitor.npu());
+      console.log('进程资源信息:', await resourceMonitor.processes());
+      console.log('服务进程资源信息:', await resourceMonitor.serviceProcesses());
+      console.log('系统风扇信息:', await resourceMonitor.systemFan());
 
       // 调用cpu方法
       try {

@@ -21,6 +21,7 @@
  */
 
 import { FnosClient, DockerManager } from '../src/index.js';
+import { loginWithTwofa, parseAuthArgs, printAuthHelp } from './common.js';
 
 function parseArgs(args: string[]): Record<string, string | null> {
   const result: Record<string, string | null> = {};
@@ -61,33 +62,29 @@ function parseArgs(args: string[]): Record<string, string | null> {
 
 async function main() {
   const args = process.argv.slice(2);
-  const parsed = parseArgs(args);
-
-  const user = parsed['user'];
-  const password = parsed['password'];
-  const endpoint = parsed['e'] || parsed['endpoint'] || 'your-custom-endpoint.com:5666';
-
-  if (!user || !password) {
-    console.error(`用法: tsx examples/docker_manager.ts --user <用户名> --password <密码> [-e <服务器地址>]`);
-    console.error(`  或: tsx examples/docker_manager.ts --user=<用户名> --password=<密码> [-e=<服务器地址>]`);
-    console.error(`错误: 必须提供 --user 和 --password 参数`);
-    process.exit(1);
+  if (args.includes('--help')) {
+    printAuthHelp('Docker 只读查询');
+    return;
   }
+  const authArgs = parseAuthArgs(args);
 
   const client = new FnosClient();
 
   try {
-    await client.connect(endpoint);
+    await client.connect(
+      authArgs.endpoint, 3000, authArgs.useSsl, authArgs.skipSslVerify,
+    );
     console.log('连接成功');
 
-    const loginResult = await client.login(user, password);
-    if (loginResult.result !== 'succ') {
-      console.log(`登录失败: ${JSON.stringify(loginResult)}`);
-      return;
-    }
+    await loginWithTwofa(client, authArgs);
     console.log('登录成功');
 
     const docker = new DockerManager(client);
+
+    console.log('镜像下载:', await docker.listImageDownloads());
+    console.log('镜像:', await docker.listImages());
+    console.log('网络:', await docker.listNetworks());
+    console.log('注册表仓库:', await docker.listRegistryRepositories());
 
     // 1. 获取 Docker Compose 项目列表
     console.log('\n=== Docker Compose 项目列表 ===');

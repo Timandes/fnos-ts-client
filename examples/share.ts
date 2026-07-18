@@ -21,6 +21,7 @@
  */
 
 import { FnosClient, Share } from '../src/index.js';
+import { loginWithTwofa, parseAuthArgs, printAuthHelp } from './common.js';
 
 function parseArgs(args: string[]): Record<string, string | null> {
   const result: Record<string, string | null> = {};
@@ -61,33 +62,38 @@ function parseArgs(args: string[]): Record<string, string | null> {
 
 async function main() {
   const args = process.argv.slice(2);
-  const parsed = parseArgs(args);
-
-  const user = parsed['user'];
-  const password = parsed['password'];
-  const endpoint = parsed['e'] || parsed['endpoint'] || 'your-custom-endpoint.com:5666';
-
-  if (!user || !password) {
-    console.error(`用法: tsx examples/share.ts --user <用户名> --password <密码> [-e <服务器地址>]`);
-    console.error(`  或: tsx examples/share.ts --user=<用户名> --password=<密码> [-e=<服务器地址>]`);
-    console.error(`错误: 必须提供 --user 和 --password 参数`);
-    process.exit(1);
+  if (args.includes('--help')) {
+    printAuthHelp('共享服务只读查询');
+    return;
   }
+  const authArgs = parseAuthArgs(args);
 
   const client = new FnosClient();
 
   try {
-    await client.connect(endpoint);
+    await client.connect(
+      authArgs.endpoint, 3000, authArgs.useSsl, authArgs.skipSslVerify,
+    );
     console.log('连接成功');
 
-    const loginResult = await client.login(user, password);
-    if (loginResult.result !== 'succ') {
-      console.log(`登录失败: ${JSON.stringify(loginResult)}`);
-      return;
-    }
+    await loginWithTwofa(client, authArgs);
     console.log('登录成功');
 
     const share = new Share(client);
+
+    console.log('DLNA 选项:', await share.dlnaOptions());
+    console.log('DLNA 共享选项:', await share.dlnaShareOptions());
+    console.log('FTP 选项:', await share.ftpOptions());
+    console.log('FTP 共享选项:', await share.ftpShareOptions());
+    console.log('NFS 选项:', await share.nfsOptions());
+    console.log('NFS 共享选项:', await share.nfsShareOptions());
+    console.log('SMB 共享选项:', await share.smbShareOptions());
+    console.log('WebDAV 选项:', await share.webdavOptions());
+    console.log('WebDAV 共享选项:', await share.webdavShareOptions());
+    console.log('链接默认设置:', await share.getLinkDefaults());
+    console.log('默认链接:', await share.getDefaultLink());
+    console.log('链接列表:', await share.listLinks());
+    console.log('链接权限:', await share.getLinkPermission());
 
     // 获取 SMB 配置信息
     console.log('\n=== SMB 配置信息 ===');
