@@ -17,7 +17,7 @@
  */
 
 export { FnosClient } from './client.js';
-export { NotConnectedError } from './exceptions.js';
+export { HTTPSRequiredError, NotConnectedError } from './exceptions.js';
 export { Crypto } from './crypto.js';
 export { ResourceMonitor } from './resource_monitor.js';
 export { Store } from './store.js';

@@ -14,8 +14,9 @@
 
 import WebSocket from 'ws';
 import { randomBytes } from 'crypto';
+import type { IncomingMessage } from 'node:http';
 import { Crypto } from './crypto.js';
-import { NotConnectedError } from './exceptions.js';
+import { HTTPSRequiredError, NotConnectedError } from './exceptions.js';
 import logger from './logger.js';
 
 export type ConnectionType = 'main' | 'timer' | 'file';
@@ -254,6 +255,34 @@ export class FnosClient {
     return { hostPort: endpoint, actualUseSsl: useSsl };
   }
 
+  private httpsRequiredError(
+    requestedUri: string,
+    actualUseSsl: boolean,
+    response: IncomingMessage,
+  ): HTTPSRequiredError | null {
+    const statusCode = response.statusCode;
+    const location = response.headers.location;
+    if (
+      actualUseSsl ||
+      !statusCode ||
+      ![301, 302, 303, 307, 308].includes(statusCode) ||
+      !location
+    ) {
+      return null;
+    }
+
+    let redirect: URL;
+    try {
+      redirect = new URL(location, requestedUri);
+    } catch {
+      return null;
+    }
+    if (redirect.protocol !== 'https:') {
+      return null;
+    }
+    return new HTTPSRequiredError(requestedUri, redirect.toString(), statusCode);
+  }
+
   /**
    * 连接到WebSocket服务器
    *
@@ -287,6 +316,24 @@ export class FnosClient {
 
         // 创建WebSocket连接
         this.ws = new WebSocket(uri, wsOptions);
+
+        this.ws.on('unexpected-response', (_request, response) => {
+          const converted = this.httpsRequiredError(uri, actualUseSsl, response);
+          const error = converted ?? new Error(
+            `Unexpected server response: ${response.statusCode ?? 'unknown'}`,
+          );
+          response.resume();
+          if (this.connectTimeoutTimer) {
+            clearTimeout(this.connectTimeoutTimer);
+          }
+          this.connectTimeoutTimer = null;
+          this.connected = false;
+          this.ws = null;
+          const rejectConnect = this.connectReject;
+          this.connectReject = null;
+          this.connectResolve = null;
+          rejectConnect?.(error);
+        });
 
         // 设置超时
         this.connectTimeoutTimer = setTimeout(() => {
