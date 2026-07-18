@@ -4,6 +4,54 @@
 
 本文档说明如何验证长时间连接断连问题的修复效果。
 
+## SDK 自动化验证
+
+### 离线验证
+
+先安装依赖并编译 SDK，再运行单元、工具和额外源码类型检查：
+
+```bash
+npm ci
+npm run build
+npm run test:unit
+npm run test:tools
+npm run check:extras
+```
+
+`npm run test:unit` 覆盖客户端状态机、HTTPS 重定向、71 个只读查询端点、示例帮助
+路径和文档一致性；`npm run test:tools` 单独覆盖磁盘温度回退与凭据脱敏；
+`npm run check:extras` 对 `examples/` 和 `tools/` 执行严格 TypeScript 检查。
+
+### 固定 mock server 集成验证
+
+集成测试要求：
+
+- Python 3.11；
+- `uv`；
+- 本机端口 `5666` 可用；
+- fnos-mock-server 固定提交 `d9592a05a8e07082b954921acfae3a9a915f3c01`；
+- 启动服务时设置 `FNOS_MOCK_TWOFA_USERS=twofauser`。
+
+准备并启动 mock server：
+
+```bash
+git clone https://github.com/Timandes/fnos-mock-server.git
+cd fnos-mock-server
+git checkout d9592a05a8e07082b954921acfae3a9a915f3c01
+uv sync --python 3.11
+FNOS_MOCK_TWOFA_USERS=twofauser uv run --python 3.11 python -m server.main
+```
+
+保持服务运行，在本项目目录执行：
+
+```bash
+npm run build
+npm run test:integration
+```
+
+完整测试入口 `npm test` 会串行运行已编译的单元和集成测试，再运行工具测试。固定提交
+用于避免 mock fixture 漂移；集成测试包括普通登录、两步验证登录和 71 个只读查询端点。
+
 ## 修复内容
 
 ### 1. 清除连接超时定时器（核心修复）

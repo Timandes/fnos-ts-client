@@ -119,6 +119,39 @@ async function main() {
 main().catch(console.error);
 ```
 
+### 两步验证登录
+
+`login()` 会把需要验证码的挑战标记为 `twofaRequired`；调用方再通过
+`submitTwofaCode()` 提交六位验证码。若 `twofaSetupRequired` 为 `true`，账号需要先在
+fnOS 中完成两步验证绑定，SDK 不会自动执行绑定流程。
+
+```typescript
+import { FnosClient } from 'fnos';
+
+const client = new FnosClient();
+
+try {
+  await client.connect('nas.example.com:5666');
+  let result = await client.login('alice', 'password');
+
+  if (result.twofaRequired) {
+    const code = process.env.FNOS_TWOFA_CODE;
+    if (!code) throw new Error('缺少 FNOS_TWOFA_CODE');
+    result = await client.submitTwofaCode(code, false);
+  } else if (result.twofaSetupRequired) {
+    throw new Error('该账号需要先绑定两步验证');
+  }
+
+  if (result.result !== 'succ') {
+    throw new Error(result.msg ?? result.errmsg ?? '登录失败');
+  }
+} finally {
+  client.close();
+}
+```
+
+最终登录成功只要求响应中包含 `token` 和 `secret`，`longToken` 可以缺失。
+
 ### SSL/WSS 连接
 
 ```typescript
@@ -144,19 +177,50 @@ async function main() {
 main().catch(console.error);
 ```
 
+### 诊断强制 HTTPS
+
+当 `ws://` 握手被 fnOS 重定向到 `https://` 时，`connect()` 抛出
+`HTTPSRequiredError`。SDK 不会自动切换 WSS 或重试；调用方应检查异常后自行决定是否用
+`wss://` 或 `useSsl=true` 重新连接。
+
+```typescript
+import { FnosClient, HTTPSRequiredError } from 'fnos';
+
+const client = new FnosClient();
+
+try {
+  await client.connect('nas.example.com:5666');
+} catch (error) {
+  if (!(error instanceof HTTPSRequiredError)) throw error;
+  const suggested = new URL(error.redirectUri);
+  suggested.protocol = 'wss:';
+  console.log(error.statusCode, error.requestedUri, error.redirectUri);
+  console.log(`建议改用: ${suggested}`);
+} finally {
+  client.close();
+}
+```
+
 ### 运行示例脚本
 
 ```bash
-# 基本示例
-pnpm tsx examples/demo.ts --user=SystemMonitor --password=password -e=nas-9.timandes.net:5666
+# 统一认证参数支持 --code、--trust-device、--use-ssl 和 --skip-ssl-verify
+npm exec -- tsx examples/twofa_login.ts --user USER --password PASSWORD -e HOST:PORT
+npm exec -- tsx examples/backup_manager.ts --user USER --password PASSWORD -e HOST:PORT
+npm exec -- tsx examples/download_center.ts --user USER --password PASSWORD -e HOST:PORT
+npm exec -- tsx examples/ip_blocker.ts --user USER --password PASSWORD -e HOST:PORT
+npm exec -- tsx examples/license_manager.ts --user USER --password PASSWORD -e HOST:PORT
+npm exec -- tsx examples/live_update.ts --user USER --password PASSWORD -e HOST:PORT
+npm exec -- tsx examples/mount_manager.ts --user USER --password PASSWORD -e HOST:PORT
+npm exec -- tsx examples/network_server.ts --user USER --password PASSWORD -e HOST:PORT
+npm exec -- tsx examples/security.ts --user USER --password PASSWORD -e HOST:PORT
+npm exec -- tsx examples/system_restore.ts --user USER --password PASSWORD -e HOST:PORT
 
-# 资源监控示例
-pnpm tsx examples/resource_monitor.ts --user=SystemMonitor --password=password -e=nas-9.timandes.net:5666
+# 只诊断强制 HTTPS，无需用户名和密码
+npm exec -- tsx examples/https_required_error.ts -e HOST:PORT
 
-# 用户模块示例
-pnpm tsx examples/user.ts --user=SystemMonitor --password=password -e=nas-9.timandes.net:5666
-
-# 其他示例...
+# 磁盘温度诊断工具
+npm run tool:disk-temperatures -- --user USER --password PASSWORD -e HOST:PORT
 ```
 
 ## API 参考
@@ -168,6 +232,7 @@ pnpm tsx examples/user.ts --user=SystemMonitor --password=password -e=nas-9.tima
 | `__init__` | 初始化客户端，支持 type 参数（"main"、"timer"或"file"，默认为"main"） |
 | `connect` | 连接到 WebSocket 服务器（支持 SSL/WSS，参数：endpoint, timeout, useSsl, skipSslVerify） |
 | `login` | 用户登录方法 |
+| `submitTwofaCode` | 提交六位两步验证码，可选择信任当前设备 |
 | `loginViaToken` | 使用 token 登录方法 |
 | `getDecryptedSecret` | 获取解密后的 secret |
 | `onMessage` | 设置消息回调函数 |
@@ -277,6 +342,60 @@ pnpm tsx examples/user.ts --user=SystemMonitor --password=password -e=nas-9.tima
 | `mkdir` | 创建文件夹 |
 | `remove` | 删除文件或文件夹 |
 | `getAcl` | 获取文件的 ACL（访问控制列表）信息 |
+
+### 扩展只读查询 API
+
+下表列出本次从 pyfnos main 同步的 71 个只读查询端点。所有方法均原样返回 fnOS
+响应，最后一个可选参数为 `timeout`；带参数的方法会在发起请求前校验参数。
+
+| 类 | 新增方法 |
+| --- | --- |
+| `BackupManager` | `listTasks(direction)` |
+| `DockerManager` | `listImageDownloads()`、`listImages()`、`listNetworks()`、`listRegistryRepositories(keyword, page, pageSize)` |
+| `DownloadCenter` | `getDefaultSaveDirectory()`、`getStatistics()`、`queryTasks(stateFilter, initFlag)` |
+| `File` | `listAppDirectories()`、`listFavorites()`、`listDirectoryEntries()`、`listRecent()`、`listShared()`、`listSharedByOthers()`、`listTeamTrashBins()`、`listTrash()` |
+| `IPBlocker` | `listAllowedAddresses()`、`getAutoBlockRule()`、`listDeniedAddresses()` |
+| `LicenseManager` | `list(page, pageSize)` |
+| `LiveUpdate` | `getStatus()` |
+| `MountManager` | `listMounts()`、`getSettings()` |
+| `NetworkServer` | `listCertificates()`、`getConnectionConfig()`、`getConnectionStatus()`、`listDdnsProviders()`、`listDdnsRecords(page, pageSize)` |
+| `Network` | `getGateway()`、`getMultiGatewayStatus()`、`getNicPerformanceMode()`、`getInfo(ifName)`、`getSshStatus()` |
+| `ResourceMonitor` | `npu()`、`processes()`、`serviceProcesses()`、`systemFan()` |
+| `SAC` | `getEmailConfig()`、`listEmailProviders()` |
+| `Security` | `getFirewall()`、`getProcessTraffic(processes)` |
+| `Share` | `dlnaOptions()`、`dlnaShareOptions()`、`ftpOptions()`、`ftpShareOptions()`、`nfsOptions()`、`nfsShareOptions()`、`smbShareOptions()`、`webdavOptions()`、`webdavShareOptions()`、`getLinkDefaults()`、`getDefaultLink()`、`listLinks(...)`、`getLinkPermission()` |
+| `Store` | `getCacheDeviceState()`、`getDiskIdleTime()`、`getDiskWakeup()`、`getRemovableConfig()`、`listCacheDevices()`、`listRemovableDevices()` |
+| `SystemInfo` | `getReservedPartition()` |
+| `SystemRestore` | `getInfo()` |
+| `User` | `listTokens()`、`getMyTwofaConfig()`、`getGlobalTwofaConfig()`、`getUserTwofaConfig(uid)`、`getActiveState()`、`getGroupInfo(group)`、`listGroups()`、`listLoginDevices()`、`getPreference(name)` |
+
+新增领域类 `BackupManager`、`DownloadCenter`、`IPBlocker`、`LicenseManager`、
+`LiveUpdate`、`MountManager`、`NetworkServer`、`Security` 和 `SystemRestore` 均从包入口导出。
+
+### 磁盘温度诊断
+
+`tools/list_disk_temperatures.ts`（npm 命令 `tool:disk-temperatures`）按以下顺序读取温度：
+
+1. `ResourceMonitor.disk().data.disk[].temp`；
+2. `Store.getDiskSmart().smart.temperature.current`；
+3. `Store.getDiskSmart().smart.nvme_smart_health_information_log.temperature`。
+
+缺失、非数字、非有限数值或 `0` 会触发下一层回退。单块磁盘 SMART 失败不会影响其他
+磁盘；输出会标明最终来源和每个被跳过候选值的原因。工具支持与示例相同的 SSL 和 2FA
+参数，并对错误详情中的密码、验证码及认证 token 脱敏。
+
+### 暂不支持的响应样本
+
+以下 7 个端点在上游只有响应 fixture，没有配套请求 fixture。本次同步没有猜测请求参数，
+因此暂不公开：
+
+- `appcgi.license.soft.get`
+- `appcgi.license.soft.ipc.get`
+- `appcgi.mountmgr.task.list`
+- `appcgi.sac.entry.v1.getEntryList`
+- `appcgi.sac.entry.v1.getUserDesktop`
+- `taskState.list`
+- `util.getSI`
 
 ## 加密实现
 
