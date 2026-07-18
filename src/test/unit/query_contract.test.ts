@@ -12,7 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { describe, it, mock } from 'node:test';
+import { DockerManager } from '../../docker_manager.js';
+import { FnosClient } from '../../client.js';
+import { Network } from '../../network.js';
+import { Share } from '../../share.js';
+import { User } from '../../user.js';
+import { EXISTING_QUERY_CASES } from './query_cases.js';
 import { assertQueryCase } from './query_contract.js';
 
 describe('query contract harness', () => {
@@ -28,4 +35,36 @@ describe('query contract harness', () => {
           timeout,
         ),
     }));
+});
+
+describe('existing extended query contracts', () => {
+  it('contains 54 captured request cases', () => {
+    assert.equal(EXISTING_QUERY_CASES.length, 54);
+  });
+
+  for (const query of EXISTING_QUERY_CASES) {
+    it(query.name, () => assertQueryCase(query));
+  }
+
+  it('rejects invalid existing-domain arguments before sending', async () => {
+    const client = new FnosClient();
+    const request = mock.method(
+      client,
+      'requestPayloadWithResponse',
+      async () => ({ result: 'unexpected' }),
+    );
+    try {
+      await assert.rejects(new Network(client).getInfo(''));
+      await assert.rejects(new User(client).getUserTwofaConfig(-1));
+      await assert.rejects(new User(client).getGroupInfo('   '));
+      await assert.rejects(new User(client).getPreference(''));
+      await assert.rejects(
+        new DockerManager(client).listRegistryRepositories('', 0),
+      );
+      await assert.rejects(new Share(client).listLinks(false, '', 1, 0));
+      assert.equal(request.mock.callCount(), 0);
+    } finally {
+      request.mock.restore();
+    }
+  });
 });

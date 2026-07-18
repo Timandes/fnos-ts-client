@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { FnosClient } from './client.js';
+import { requirePositiveInteger } from './validation.js';
 
 /**
  * Docker 管理类
@@ -56,5 +57,44 @@ export class DockerManager {
   async getSystemSettings(timeout: number = 10000): Promise<any> {
     const response = await this.client.requestPayloadWithResponse('appcgi.dockermgr.systemSettingGet', {}, timeout);
     return response;
+  }
+
+  async listImageDownloads(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.dockermgr.imageDownloadList',
+      {},
+      timeout,
+    );
+  }
+
+  async listImages(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.dockermgr.imageList',
+      {},
+      timeout,
+    );
+  }
+
+  async listNetworks(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.dockermgr.networkList',
+      {},
+      timeout,
+    );
+  }
+
+  async listRegistryRepositories(
+    keyword: string = '',
+    page: number = 1,
+    pageSize: number = 20,
+    timeout: number = 10000,
+  ): Promise<any> {
+    requirePositiveInteger('page', page);
+    requirePositiveInteger('pageSize', pageSize);
+    return this.client.requestPayloadWithResponse(
+      'appcgi.dockermgr.registryHubRepoList',
+      { key: keyword, page, pageSize },
+      timeout,
+    );
   }
 }

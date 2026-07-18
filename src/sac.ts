@@ -31,4 +31,20 @@ export class SAC {
     const response = await this.client.requestPayloadWithResponse('appcgi.sac.ups.v1.status', {}, timeout);
     return response;
   }
+
+  async getEmailConfig(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.sac.externalnotify.v1.email.getConfig',
+      {},
+      timeout,
+    );
+  }
+
+  async listEmailProviders(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.sac.externalnotify.v1.email.getProviders',
+      {},
+      timeout,
+    );
+  }
 }

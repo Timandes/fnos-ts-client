@@ -89,4 +89,48 @@ export class File {
     const response = await this.client.requestPayloadWithResponse('file.getAcl', payload, timeout);
     return response;
   }
+
+  async listAppDirectories(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.filestor.getAppDirList',
+      {},
+      timeout,
+    );
+  }
+
+  async listFavorites(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('file.fav.list', {}, timeout);
+  }
+
+  async listDirectoryEntries(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('file.lsDir', {}, timeout);
+  }
+
+  async listRecent(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('file.recent.list', {}, timeout);
+  }
+
+  async listShared(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('file.share.list', {}, timeout);
+  }
+
+  async listSharedByOthers(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'file.share.listOthers',
+      {},
+      timeout,
+    );
+  }
+
+  async listTeamTrashBins(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'file.team.trash.listTrashbin',
+      {},
+      timeout,
+    );
+  }
+
+  async listTrash(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('file.trash.list', {}, timeout);
+  }
 }

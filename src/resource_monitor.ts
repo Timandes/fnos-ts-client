@@ -73,4 +73,36 @@ export class ResourceMonitor {
     const response = await this.client.requestPayloadWithResponse('appcgi.resmon.gen', payload, timeout);
     return response;
   }
+
+  async npu(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.resmon.npu',
+      {},
+      timeout,
+    );
+  }
+
+  async processes(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.resmon.proc.list',
+      {},
+      timeout,
+    );
+  }
+
+  async serviceProcesses(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.resmon.proc.srv',
+      {},
+      timeout,
+    );
+  }
+
+  async systemFan(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.resmon.sysFan',
+      {},
+      timeout,
+    );
+  }
 }
