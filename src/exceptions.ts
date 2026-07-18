@@ -21,3 +21,21 @@ export class NotConnectedError extends Error {
     this.name = 'NotConnectedError';
   }
 }
+
+/**
+ * fnOS 将不安全的 WebSocket 握手重定向到 HTTPS 时抛出的异常
+ */
+export class HTTPSRequiredError extends Error {
+  constructor(
+    public readonly requestedUri: string,
+    public readonly redirectUri: string,
+    public readonly statusCode: number,
+  ) {
+    super(
+      'fnOS 服务端要求安全连接；当前 WS 连接被重定向到 HTTPS。' +
+      '请使用 wss:// endpoint 或传入 useSsl=true。' +
+      `重定向地址：${redirectUri}`,
+    );
+    this.name = 'HTTPSRequiredError';
+  }
+}

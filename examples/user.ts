@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { FnosClient, User } from '../src/index.js';
+import { loginWithTwofa, parseAuthArgs, printAuthHelp } from './common.js';
 
 function onMessageHandler(message: string): void {
   console.log(`收到消息: ${message}`);
@@ -77,18 +78,11 @@ function parseArgs(args: string[]): Record<string, string | null> {
 async function main() {
   // 从命令行参数获取
   const args = process.argv.slice(2);
-  const parsed = parseArgs(args);
-
-  const user = parsed['user'];
-  const password = parsed['password'];
-  const endpoint = parsed['e'] || parsed['endpoint'] || 'your-custom-endpoint.com:5666';
-
-  if (!user || !password) {
-    console.error(`用法: tsx examples/user.ts --user <用户名> --password <密码> [-e <服务器地址>]`);
-    console.error(`  或: tsx examples/user.ts --user=<用户名> --password=<密码> [-e=<服务器地址>]`);
-    console.error(`错误: 必须提供 --user 和 --password 参数`);
-    process.exit(1);
+  if (args.includes('--help')) {
+    printAuthHelp('用户与权限只读查询');
+    return;
   }
+  const authArgs = parseAuthArgs(args);
 
   // 创建客户端实例
   const client = new FnosClient();
@@ -99,22 +93,28 @@ async function main() {
   try {
     // 连接到服务器
     console.log('正在连接到服务器...');
-    await client.connect(endpoint);
+    await client.connect(
+      authArgs.endpoint, 3000, authArgs.useSsl, authArgs.skipSslVerify,
+    );
     console.log('连接已建立');
 
     // 登录
     console.log('正在登录...');
-    const loginResult = await client.login(user, password);
-
-    if (loginResult.result === 'succ') {
-      console.log('登录成功');
-    } else {
-      console.error(`登录失败: ${loginResult.msg || '未知错误'}`);
-      return;
-    }
+    await loginWithTwofa(client, authArgs);
+    console.log('登录成功');
 
     // 创建User实例
     const userModule = new User(client);
+
+    console.log('令牌:', await userModule.listTokens());
+    console.log('我的两步验证配置:', await userModule.getMyTwofaConfig());
+    console.log('全局两步验证配置:', await userModule.getGlobalTwofaConfig());
+    console.log('用户两步验证配置:', await userModule.getUserTwofaConfig(0));
+    console.log('活动状态:', await userModule.getActiveState());
+    console.log('用户组信息:', await userModule.getGroupInfo('users'));
+    console.log('用户组:', await userModule.listGroups());
+    console.log('登录设备:', await userModule.listLoginDevices());
+    console.log('日期格式偏好:', await userModule.getPreference('date-format'));
 
     // 调用getInfo方法
     console.log('\n正在调用getInfo方法...');

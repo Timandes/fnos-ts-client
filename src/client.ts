@@ -14,8 +14,9 @@
 
 import WebSocket from 'ws';
 import { randomBytes } from 'crypto';
+import type { IncomingMessage } from 'node:http';
 import { Crypto } from './crypto.js';
-import { NotConnectedError } from './exceptions.js';
+import { HTTPSRequiredError, NotConnectedError } from './exceptions.js';
 import logger from './logger.js';
 
 export type ConnectionType = 'main' | 'timer' | 'file';
@@ -40,7 +41,24 @@ export interface LoginResponse {
   longToken?: string;
   secret?: string;
   msg?: string;
+  errmsg?: string;
   reqid?: string;
+  accessToken?: string;
+  secureEmail?: string;
+  isTwofaEnforced?: boolean;
+  isBindTwofaSecret?: boolean;
+  isTrustedDevice?: boolean;
+  twofaRequired?: boolean;
+  twofaSetupRequired?: boolean;
+  [key: string]: unknown;
+}
+
+interface TwofaPending {
+  accessToken: string;
+  username: string;
+  stay: boolean;
+  deviceType: string;
+  deviceName: string;
 }
 
 export class FnosClient {
@@ -59,6 +77,12 @@ export class FnosClient {
   private loginReject: ((reason?: any) => void) | null = null;
   private loginReqid: string | null = null;
   private loginTimeoutTimer: NodeJS.Timeout | null = null;
+  private twofaPending: TwofaPending | null = null;
+  private twofaReqid: string | null = null;
+  private twofaResolve: ((value: LoginResponse) => void) | null = null;
+  private twofaReject: ((reason?: unknown) => void) | null = null;
+  private twofaTimeoutTimer: NodeJS.Timeout | null = null;
+  private loginContext: Omit<TwofaPending, 'accessToken'> | null = null;
   private decryptedSecret: string | null = null;
   private aesKey: Buffer | null = null;
   private iv: Buffer | null = null;
@@ -105,48 +129,50 @@ export class FnosClient {
     return `${t}-${e}-${n}`.toLowerCase();
   }
 
-  /**
-   * 加密登录数据
-   */
-  private encryptLoginData(username: string, password: string): any {
+  private encryptAuthData(payload: Record<string, unknown>): Record<string, string> {
     if (!this.publicKey || !this.sessionId) {
       throw new Error('未获取到公钥或会话ID');
     }
 
-    // 生成随机AES密钥
     this.aesKey = Crypto.randomBytes(32); // 256位密钥
-
-    // 使用RSA公钥加密AES密钥
     const encryptedAesKey = Crypto.rsaEncrypt(this.aesKey, this.publicKey);
-
-    // 构造登录数据
-    const loginData = {
-      reqid: this.generateReqid(),
-      user: username,
-      password: password,
-      stay: true,
-      deviceType: 'Browser',
-      deviceName: 'Mac OS-Safari',
-      did: this.generateDid(),
-      req: 'user.login',
-      si: this.sessionId,
-    };
-
-    // 保存登录请求的reqid
-    this.loginReqid = loginData.reqid;
-
-    // 使用AES密钥加密登录数据
-    const jsonData = JSON.stringify(loginData);
     this.iv = Crypto.randomBytes(16);
-    const encryptedData = Crypto.aesEncryptWithPadding(jsonData, this.aesKey, this.iv);
-
-    // 构造返回数据
+    const encryptedData = Crypto.aesEncryptWithPadding(
+      JSON.stringify(payload),
+      this.aesKey,
+      this.iv,
+    );
     return {
       req: 'encrypted',
       iv: Crypto.base64Encode(this.iv),
       rsa: encryptedAesKey,
       aes: Crypto.base64Encode(encryptedData),
     };
+  }
+
+  /**
+   * 加密登录数据
+   */
+  private encryptLoginData(
+    username: string,
+    password: string,
+    stay = true,
+    deviceType = 'Browser',
+    deviceName = 'Mac OS-Safari',
+  ): Record<string, string> {
+    const reqid = this.generateReqid();
+    this.loginReqid = reqid;
+    return this.encryptAuthData({
+      reqid,
+      user: username,
+      password,
+      stay,
+      deviceType,
+      deviceName,
+      did: this.generateDid(),
+      req: 'user.login',
+      si: this.sessionId,
+    });
   }
 
   /**
@@ -167,6 +193,52 @@ export class FnosClient {
     }
   }
 
+  private isFinalLoginSuccess(data: LoginResponse): boolean {
+    return data.result === 'succ' &&
+      typeof data.token === 'string' &&
+      typeof data.secret === 'string';
+  }
+
+  private isTwofaChallenge(data: LoginResponse): boolean {
+    return data.result === 'succ' &&
+      data.isBindTwofaSecret === true &&
+      data.isTrustedDevice === false &&
+      typeof data.accessToken === 'string' &&
+      !data.token &&
+      !data.secret;
+  }
+
+  private isTwofaSetupChallenge(data: LoginResponse): boolean {
+    return data.result === 'succ' &&
+      data.isTwofaEnforced === true &&
+      data.isBindTwofaSecret === false &&
+      typeof data.accessToken === 'string' &&
+      !data.token &&
+      !data.secret;
+  }
+
+  private clearTwofaAttempt(): void {
+    if (this.twofaTimeoutTimer) {
+      clearTimeout(this.twofaTimeoutTimer);
+    }
+    this.twofaTimeoutTimer = null;
+    this.twofaReqid = null;
+    this.twofaResolve = null;
+    this.twofaReject = null;
+  }
+
+  private clearTwofaState(): void {
+    this.clearTwofaAttempt();
+    this.twofaPending = null;
+  }
+
+  private handleFinalLoginSuccess(data: LoginResponse): void {
+    this.loginResponse = data;
+    this.decryptedSecret = this.decryptLoginSecret(data.secret!);
+    this.token = data.token ?? null;
+    this.longToken = data.longToken ?? null;
+  }
+
   /**
    * 解析 endpoint，返回 { hostPort, actualUseSsl }
    *
@@ -181,6 +253,34 @@ export class FnosClient {
       return { hostPort: endpoint.slice(5), actualUseSsl: false };
     }
     return { hostPort: endpoint, actualUseSsl: useSsl };
+  }
+
+  private httpsRequiredError(
+    requestedUri: string,
+    actualUseSsl: boolean,
+    response: IncomingMessage,
+  ): HTTPSRequiredError | null {
+    const statusCode = response.statusCode;
+    const location = response.headers.location;
+    if (
+      actualUseSsl ||
+      !statusCode ||
+      ![301, 302, 303, 307, 308].includes(statusCode) ||
+      !location
+    ) {
+      return null;
+    }
+
+    let redirect: URL;
+    try {
+      redirect = new URL(location, requestedUri);
+    } catch {
+      return null;
+    }
+    if (redirect.protocol !== 'https:') {
+      return null;
+    }
+    return new HTTPSRequiredError(requestedUri, redirect.toString(), statusCode);
   }
 
   /**
@@ -216,6 +316,24 @@ export class FnosClient {
 
         // 创建WebSocket连接
         this.ws = new WebSocket(uri, wsOptions);
+
+        this.ws.on('unexpected-response', (_request, response) => {
+          const converted = this.httpsRequiredError(uri, actualUseSsl, response);
+          const error = converted ?? new Error(
+            `Unexpected server response: ${response.statusCode ?? 'unknown'}`,
+          );
+          response.resume();
+          if (this.connectTimeoutTimer) {
+            clearTimeout(this.connectTimeoutTimer);
+          }
+          this.connectTimeoutTimer = null;
+          this.connected = false;
+          this.ws = null;
+          const rejectConnect = this.connectReject;
+          this.connectReject = null;
+          this.connectResolve = null;
+          rejectConnect?.(error);
+        });
 
         // 设置超时
         this.connectTimeoutTimer = setTimeout(() => {
@@ -324,26 +442,60 @@ export class FnosClient {
       } else if ('res' in data && data.res === 'pong') {
         // 这是心跳响应
         logger.debug('收到心跳响应: pong');
-      } else if ('longToken' in data && 'result' in data && data.result === 'succ') {
-        // 这是账号密码登录响应
-        this.loginResponse = data;
-        // 解密secret字段并保存
-        if ('secret' in data && data.secret) {
-          this.decryptedSecret = this.decryptLoginSecret(data.secret);
-          this.token = data.token;
-          this.longToken = data.longToken;
-          logger.debug(`服务器返回的secret: ${this.decryptedSecret?.substring(0, 20)}...`);
-        }
-        // 清除登录超时定时器
+      } else if (this.isFinalLoginSuccess(data)) {
+        const resolveTwofa = data.reqid === this.twofaReqid ? this.twofaResolve : null;
+        this.handleFinalLoginSuccess(data);
         if (this.loginTimeoutTimer) {
           clearTimeout(this.loginTimeoutTimer);
-          this.loginTimeoutTimer = null;
         }
-        if (this.loginResolve) {
-          this.loginResolve(this.loginResponse!);
-          this.loginResolve = null;
+        this.loginTimeoutTimer = null;
+        this.loginReqid = null;
+        this.clearTwofaState();
+        if (resolveTwofa) {
+          resolveTwofa(data);
+        } else if (this.loginResolve) {
+          this.loginResolve(data);
         }
+        this.loginResolve = null;
+        this.loginReject = null;
+        logger.debug(`服务器返回的secret: ${this.decryptedSecret?.substring(0, 20)}...`);
         logger.info('登录成功');
+      } else if (this.isTwofaChallenge(data) || this.isTwofaSetupChallenge(data)) {
+        const isBoundChallenge = this.isTwofaChallenge(data);
+        const context = this.loginContext;
+        if (!context) {
+          throw new Error('缺少登录上下文');
+        }
+        this.twofaPending = {
+          accessToken: data.accessToken!,
+          username: context.username,
+          stay: context.stay,
+          deviceType: context.deviceType,
+          deviceName: context.deviceName,
+        };
+        const challengeResponse: LoginResponse = {
+          ...data,
+          twofaRequired: isBoundChallenge,
+          twofaSetupRequired: !isBoundChallenge,
+        };
+        this.loginResponse = challengeResponse;
+        if (this.loginTimeoutTimer) {
+          clearTimeout(this.loginTimeoutTimer);
+        }
+        this.loginTimeoutTimer = null;
+        this.loginReqid = null;
+        this.loginResolve?.(challengeResponse);
+        this.loginResolve = null;
+        this.loginReject = null;
+      } else if (
+        data.result === 'fail' &&
+        typeof data.reqid === 'string' &&
+        data.reqid === this.twofaReqid
+      ) {
+        const resolveFailure = this.twofaResolve;
+        this.clearTwofaAttempt();
+        resolveFailure?.(data);
+        logger.error(`两步验证失败: ${data.msg || data.errmsg || '未知错误'}`);
       } else if ('result' in data && data.result === 'fail' && this.loginReqid && 'reqid' in data && data.reqid === this.loginReqid) {
         // 登录失败
         this.loginResponse = data;
@@ -356,6 +508,8 @@ export class FnosClient {
           this.loginReject(new Error(data.msg || data.errmsg || '未知错误'));
           this.loginReject = null;
         }
+        this.loginResolve = null;
+        this.loginReqid = null;
         logger.error(`登录失败: ${data.msg || data.errmsg || '未知错误'}`);
       } else {
         // 检查消息中是否包含reqid，这可能是待处理请求的响应
@@ -457,7 +611,14 @@ export class FnosClient {
   /**
    * 用户登录方法
    */
-  login(username: string, password: string, timeout: number = 10000): Promise<LoginResponse> {
+  login(
+    username: string,
+    password: string,
+    timeout: number = 10000,
+    stay = true,
+    deviceType = 'Browser',
+    deviceName = 'Mac OS-Safari',
+  ): Promise<LoginResponse> {
     return new Promise((resolve, reject) => {
       if (!this.connected) {
         reject(new NotConnectedError('未连接到服务器'));
@@ -472,9 +633,21 @@ export class FnosClient {
       // 保存用户名和密码用于重连
       this.username = username;
       this.password = password;
+      this.loginContext = {
+        username,
+        stay,
+        deviceType,
+        deviceName,
+      };
 
       // 加密登录数据
-      const encryptedData = this.encryptLoginData(username, password);
+      const encryptedData = this.encryptLoginData(
+        username,
+        password,
+        stay,
+        deviceType,
+        deviceName,
+      );
 
       // 发送登录请求并等待响应
       this.loginResolve = resolve;
@@ -490,6 +663,58 @@ export class FnosClient {
           this.loginReject = null;
         }
         this.loginTimeoutTimer = null;
+      }, timeout);
+    });
+  }
+
+  /**
+   * 提交两步验证码完成登录
+   */
+  submitTwofaCode(
+    code: string,
+    trustDevice = false,
+    timeout = 10000,
+  ): Promise<LoginResponse> {
+    return new Promise((resolve, reject) => {
+      if (!this.connected) {
+        reject(new NotConnectedError('未连接到服务器'));
+        return;
+      }
+      if (!this.publicKey || !this.sessionId) {
+        reject(new Error('未获取到公钥或会话ID'));
+        return;
+      }
+      if (!this.twofaPending) {
+        reject(new Error('没有待完成的两步验证登录'));
+        return;
+      }
+      if (!/^\d{6}$/.test(code)) {
+        reject(new RangeError('两步验证码必须是6位数字'));
+        return;
+      }
+
+      const reqid = this.generateReqid();
+      this.twofaReqid = reqid;
+      this.twofaResolve = resolve;
+      this.twofaReject = reject;
+      const pending = this.twofaPending;
+      const encrypted = this.encryptAuthData({
+        reqid,
+        code,
+        isTrustedDevice: trustDevice,
+        accessToken: pending.accessToken,
+        stay: pending.stay ? 1 : 0,
+        deviceName: pending.deviceName,
+        deviceType: pending.deviceType,
+        did: this.generateDid(),
+        req: 'user.2fa.loginVerify',
+        si: this.sessionId,
+      });
+      this.sendMessage(encrypted);
+      this.twofaTimeoutTimer = setTimeout(() => {
+        const timeoutReject = this.twofaReject;
+        this.clearTwofaAttempt();
+        timeoutReject?.(new Error('两步验证超时'));
       }, timeout);
     });
   }
@@ -707,6 +932,9 @@ export class FnosClient {
    * 关闭WebSocket连接
    */
   close(): void {
+    const rejectTwofa = this.twofaReject;
+    this.clearTwofaState();
+    rejectTwofa?.(new Error('连接已关闭'));
     if (this.ws) {
       try {
         this.ws.close();

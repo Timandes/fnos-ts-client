@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { FnosClient } from './client.js';
+import { requireNonEmptyString } from './validation.js';
 
 /**
  * 网络类
@@ -43,5 +44,46 @@ export class Network {
     const payload = { ifName: ifName };
     const response = await this.client.requestPayloadWithResponse('appcgi.network.net.detect', payload, timeout);
     return response;
+  }
+
+  async getGateway(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.network.gw.getting',
+      {},
+      timeout,
+    );
+  }
+
+  async getMultiGatewayStatus(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.network.net.getMultiGWStatus',
+      {},
+      timeout,
+    );
+  }
+
+  async getNicPerformanceMode(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.network.net.getNicPerformanceMode',
+      {},
+      timeout,
+    );
+  }
+
+  async getInfo(ifName: string, timeout: number = 10000): Promise<any> {
+    requireNonEmptyString('ifName', ifName);
+    return this.client.requestPayloadWithResponse(
+      'appcgi.network.net.info',
+      { ifName },
+      timeout,
+    );
+  }
+
+  async getSshStatus(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.network.ssh.status',
+      {},
+      timeout,
+    );
   }
 }

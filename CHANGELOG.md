@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- 新增两步验证登录流程与 `submitTwofaCode()`。
+- 新增 `HTTPSRequiredError`，识别 fnOS 强制 HTTPS 重定向。
+- 新增 9 个领域类，并扩展 9 个现有领域类，覆盖 71 个只读查询端点。
+- 新增磁盘温度诊断工具，支持资源监控、SMART 和 NVMe SMART 回退。
+
+### Changed
+
+- 最终登录成功不再依赖可选的 `longToken`。
+- 集成测试固定使用 fnos-mock-server `d9592a05a8e07082b954921acfae3a9a915f3c01`。
+
 ## [0.3.0] - 2026-04-04
 
 ### Added
@@ -76,4 +90,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 实现核心 WebSocket 客户端功能
 - 实现加密模块（RSA + AES + HMAC）
 - 实现资源监控、存储、系统信息、用户、网络、文件等模块
-

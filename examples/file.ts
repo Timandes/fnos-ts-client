@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { FnosClient, File } from '../src/index.js';
+import { loginWithTwofa, parseAuthArgs, printAuthHelp } from './common.js';
 
 function onMessageHandler(message: string): void {
   console.log(`收到消息: ${message}`);
@@ -77,18 +78,11 @@ function parseArgs(args: string[]): Record<string, string | null> {
 async function main() {
   // 从命令行参数获取
   const args = process.argv.slice(2);
-  const parsed = parseArgs(args);
-
-  const user = parsed['user'];
-  const password = parsed['password'];
-  const endpoint = parsed['e'] || parsed['endpoint'] || 'your-custom-endpoint.com:5666';
-
-  if (!user || !password) {
-    console.error(`用法: tsx examples/file.ts --user <用户名> --password <密码> [-e <服务器地址>]`);
-    console.error(`  或: tsx examples/file.ts --user=<用户名> --password=<密码> [-e=<服务器地址>]`);
-    console.error(`错误: 必须提供 --user 和 --password 参数`);
-    process.exit(1);
+  if (args.includes('--help')) {
+    printAuthHelp('文件服务只读查询');
+    return;
   }
+  const authArgs = parseAuthArgs(args);
 
   // 创建客户端实例
   const client = new FnosClient();
@@ -99,22 +93,27 @@ async function main() {
   try {
     // 连接到服务器
     console.log('正在连接到服务器...');
-    await client.connect(endpoint);
+    await client.connect(
+      authArgs.endpoint, 3000, authArgs.useSsl, authArgs.skipSslVerify,
+    );
     console.log('连接已建立');
 
     // 登录
     console.log('正在登录...');
-    const loginResult = await client.login(user, password);
-
-    if (loginResult.result === 'succ') {
-      console.log('登录成功');
-    } else {
-      console.error(`登录失败: ${loginResult.msg || '未知错误'}`);
-      return;
-    }
+    await loginWithTwofa(client, authArgs);
+    console.log('登录成功');
 
     // 创建File实例
     const fileModule = new File(client);
+
+    console.log('应用目录:', await fileModule.listAppDirectories());
+    console.log('收藏夹:', await fileModule.listFavorites());
+    console.log('目录条目:', await fileModule.listDirectoryEntries());
+    console.log('最近文件:', await fileModule.listRecent());
+    console.log('我的共享:', await fileModule.listShared());
+    console.log('他人共享:', await fileModule.listSharedByOthers());
+    console.log('团队回收站:', await fileModule.listTeamTrashBins());
+    console.log('回收站:', await fileModule.listTrash());
 
     // 调用list方法 (列出用户根目录)
     console.log('\n正在调用list方法 (用户根目录)...');

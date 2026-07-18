@@ -17,7 +17,7 @@
  */
 
 export { FnosClient } from './client.js';
-export { NotConnectedError } from './exceptions.js';
+export { HTTPSRequiredError, NotConnectedError } from './exceptions.js';
 export { Crypto } from './crypto.js';
 export { ResourceMonitor } from './resource_monitor.js';
 export { Store } from './store.js';
@@ -31,6 +31,15 @@ export { EventLogger } from './event_logger.js';
 export { Share } from './share.js';
 export { Notify } from './notify.js';
 export { IscsiManager } from './iscsi_manager.js';
+export { BackupManager } from './backup_manager.js';
+export { DownloadCenter } from './download_center.js';
+export { IPBlocker } from './ip_blocker.js';
+export { LicenseManager } from './license_manager.js';
+export { LiveUpdate } from './live_update.js';
+export { MountManager } from './mount_manager.js';
+export { NetworkServer } from './network_server.js';
+export { Security } from './security.js';
+export { SystemRestore } from './system_restore.js';
 
 export type { ConnectionType, LoginResponse } from './client.js';
 

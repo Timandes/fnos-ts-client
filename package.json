@@ -6,9 +6,12 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "find dist/test -name '*.test.js' -type f | xargs node --test",
+    "test": "find dist/test -name '*.test.js' -type f | xargs node --test --test-concurrency=1 && npm run test:tools",
     "test:unit": "find dist/test/unit -name '*.test.js' -type f | xargs node --test",
-    "test:integration": "find dist/test/integration -name '*.test.js' -type f | xargs node --test",
+    "test:integration": "find dist/test/integration -name '*.test.js' -type f | xargs node --test --test-concurrency=1",
+    "check:extras": "tsc -p tsconfig.extras.json",
+    "test:tools": "tsx --test tools/test/*.test.ts",
+    "tool:disk-temperatures": "tsx tools/list_disk_temperatures.ts",
     "test:watch": "node --test --watch dist/test/**/*.test.js",
     "example": "tsx examples/demo.ts"
   },

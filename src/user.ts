@@ -13,6 +13,10 @@
 // limitations under the License.
 
 import { FnosClient } from './client.js';
+import {
+  requireNonEmptyString,
+  requireNonNegativeInteger,
+} from './validation.js';
 
 /**
  * 用户类
@@ -58,5 +62,72 @@ export class User {
     const payload = {};
     const response = await this.client.requestPayloadWithResponse('user.isAdmin', payload, timeout);
     return response;
+  }
+
+  async listTokens(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.accountsrv.v1.token.list',
+      { data: {} },
+      timeout,
+    );
+  }
+
+  async getMyTwofaConfig(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.tfa.security.v1.me.getConfig',
+      {},
+      timeout,
+    );
+  }
+
+  async getGlobalTwofaConfig(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.tfa.security.v1.twofa.getConfig',
+      {},
+      timeout,
+    );
+  }
+
+  async getUserTwofaConfig(uid: number, timeout: number = 10000): Promise<any> {
+    requireNonNegativeInteger('uid', uid);
+    return this.client.requestPayloadWithResponse(
+      'appcgi.tfa.security.v1.user.getTwofaConfig',
+      { data: { uid } },
+      timeout,
+    );
+  }
+
+  async getActiveState(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('user.active', {}, timeout);
+  }
+
+  async getGroupInfo(group: string, timeout: number = 10000): Promise<any> {
+    requireNonEmptyString('group', group);
+    return this.client.requestPayloadWithResponse(
+      'user.groupInfo',
+      { group },
+      timeout,
+    );
+  }
+
+  async listGroups(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('user.groupList', {}, timeout);
+  }
+
+  async listLoginDevices(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'user.listLoginDevice',
+      {},
+      timeout,
+    );
+  }
+
+  async getPreference(name: string, timeout: number = 10000): Promise<any> {
+    requireNonEmptyString('name', name);
+    return this.client.requestPayloadWithResponse(
+      'usrdat.get',
+      { name },
+      timeout,
+    );
   }
 }

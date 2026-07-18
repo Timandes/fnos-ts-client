@@ -84,4 +84,28 @@ export class Store {
     const response = await this.client.requestPayloadWithResponse('stor.getUserStorage', payload, timeout);
     return response;
   }
+
+  async getCacheDeviceState(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('stor.cachedevState', {}, timeout);
+  }
+
+  async getDiskIdleTime(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('stor.getDiskIdleTime', {}, timeout);
+  }
+
+  async getDiskWakeup(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('stor.getDiskWakeup', {}, timeout);
+  }
+
+  async getRemovableConfig(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('stor.getRemovableConf', {}, timeout);
+  }
+
+  async listCacheDevices(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('stor.listCachedev', {}, timeout);
+  }
+
+  async listRemovableDevices(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse('stor.listRemovable', {}, timeout);
+  }
 }

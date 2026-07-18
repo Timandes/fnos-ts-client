@@ -63,4 +63,12 @@ export class SystemInfo {
     const response = await this.client.requestPayloadWithResponse('appcgi.sysinfo.getUptime', {}, timeout);
     return response;
   }
+
+  async getReservedPartition(timeout: number = 10000): Promise<any> {
+    return this.client.requestPayloadWithResponse(
+      'appcgi.sysinfo.getReservedPartition',
+      {},
+      timeout,
+    );
+  }
 }
