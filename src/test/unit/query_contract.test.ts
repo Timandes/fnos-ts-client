@@ -15,11 +15,19 @@
 import assert from 'node:assert/strict';
 import { describe, it, mock } from 'node:test';
 import { DockerManager } from '../../docker_manager.js';
+import { BackupManager } from '../../backup_manager.js';
 import { FnosClient } from '../../client.js';
+import { LicenseManager } from '../../license_manager.js';
 import { Network } from '../../network.js';
+import { NetworkServer } from '../../network_server.js';
+import { Security } from '../../security.js';
 import { Share } from '../../share.js';
 import { User } from '../../user.js';
-import { EXISTING_QUERY_CASES } from './query_cases.js';
+import {
+  ALL_QUERY_CASES,
+  EXISTING_QUERY_CASES,
+  NEW_QUERY_CASES,
+} from './query_cases.js';
 import { assertQueryCase } from './query_contract.js';
 
 describe('query contract harness', () => {
@@ -35,6 +43,46 @@ describe('query contract harness', () => {
           timeout,
         ),
     }));
+});
+
+describe('new extended query contracts', () => {
+  it('contains 82 cases for 71 unique endpoints', () => {
+    assert.equal(ALL_QUERY_CASES.length, 82);
+    assert.equal(
+      new Set(ALL_QUERY_CASES.map((query) => query.endpoint)).size,
+      71,
+    );
+  });
+
+  for (const query of NEW_QUERY_CASES) {
+    it(query.name, () => assertQueryCase(query));
+  }
+
+  it('validates new-domain arguments and copies processes', async () => {
+    const client = new FnosClient();
+    const request = mock.method(
+      client,
+      'requestPayloadWithResponse',
+      async () => ({}),
+    );
+    try {
+      await assert.rejects(new BackupManager(client).listTasks(2));
+      await assert.rejects(new LicenseManager(client).list(0));
+      await assert.rejects(new NetworkServer(client).listDdnsRecords(1, 0));
+      assert.equal(request.mock.callCount(), 0);
+
+      const source = [{ pid: 1001, process: 'example' }];
+      await new Security(client).getProcessTraffic(source);
+      const sent = request.mock.calls[0].arguments[1] as {
+        data: typeof source;
+      };
+      assert.deepEqual(sent.data, source);
+      assert.notEqual(sent.data, source);
+      assert.notEqual(sent.data[0], source[0]);
+    } finally {
+      request.mock.restore();
+    }
+  });
 });
 
 describe('existing extended query contracts', () => {

@@ -13,13 +13,22 @@
 // limitations under the License.
 
 import { DockerManager } from '../../docker_manager.js';
+import { BackupManager } from '../../backup_manager.js';
+import { DownloadCenter } from '../../download_center.js';
 import { File } from '../../file.js';
+import { IPBlocker } from '../../ip_blocker.js';
+import { LicenseManager } from '../../license_manager.js';
+import { LiveUpdate } from '../../live_update.js';
+import { MountManager } from '../../mount_manager.js';
 import { Network } from '../../network.js';
+import { NetworkServer } from '../../network_server.js';
 import { ResourceMonitor } from '../../resource_monitor.js';
 import { SAC } from '../../sac.js';
+import { Security } from '../../security.js';
 import { Share } from '../../share.js';
 import { Store } from '../../store.js';
 import { SystemInfo } from '../../system_info.js';
+import { SystemRestore } from '../../system_restore.js';
 import { User } from '../../user.js';
 import type { QueryCase } from './query_contract.js';
 
@@ -94,4 +103,42 @@ export const EXISTING_QUERY_CASES: QueryCase[] = [
   q('system-reserved-partition', 'appcgi.sysinfo.getReservedPartition', {}, (c, t) => new SystemInfo(c).getReservedPartition(t)),
 ];
 
-export const ALL_QUERY_CASES: QueryCase[] = [...EXISTING_QUERY_CASES];
+const PROCESSES = [
+  { pid: 1001, process: 'example-process' },
+  { pid: 1002, process: 'example-worker' },
+];
+
+export const NEW_QUERY_CASES: QueryCase[] = [
+  q('backup-outbound', 'appcgi.backup.task.list', { direction: 0 }, (c, t) => new BackupManager(c).listTasks(0, t)),
+  q('backup-inbound', 'appcgi.backup.task.list', { direction: 1 }, (c, t) => new BackupManager(c).listTasks(1, t)),
+  q('download-save-dir', 'appcgi.downloadcenter.config.getDefaultSaveDir', {}, (c, t) => new DownloadCenter(c).getDefaultSaveDirectory(t)),
+  q('download-stats', 'appcgi.downloadcenter.stat.all', {}, (c, t) => new DownloadCenter(c).getStatistics(t)),
+  ...[16, 1, 2, 32, 4, 64, 65535, 8].map((stateFilter) =>
+    q(
+      `download-state-${stateFilter}`,
+      'appcgi.downloadcenter.task.query',
+      { init_flag: true, state_filter: stateFilter },
+      (c, t) => new DownloadCenter(c).queryTasks(stateFilter, true, t),
+    )),
+  q('ip-allow', 'appcgi.ipblocker.queryAllowList', {}, (c, t) => new IPBlocker(c).listAllowedAddresses(t)),
+  q('ip-auto-block', 'appcgi.ipblocker.queryAutoBlockRule', {}, (c, t) => new IPBlocker(c).getAutoBlockRule(t)),
+  q('ip-deny', 'appcgi.ipblocker.queryDenyList', {}, (c, t) => new IPBlocker(c).listDeniedAddresses(t)),
+  q('licenses', 'appcgi.license.soft.list', { data: { page: 1, pageSize: 200 } }, (c, t) => new LicenseManager(c).list(undefined, undefined, t)),
+  q('live-update', 'liveupdate.status', {}, (c, t) => new LiveUpdate(c).getStatus(t)),
+  q('mounts', 'appcgi.mountmgr.list', {}, (c, t) => new MountManager(c).listMounts(t)),
+  q('mount-settings', 'appcgi.mountmgr.setting.detail', {}, (c, t) => new MountManager(c).getSettings(t)),
+  q('certificates', 'appcgi.netsvr.cert.list', {}, (c, t) => new NetworkServer(c).listCertificates(t)),
+  q('connection-config', 'appcgi.netsvr.conn.getconfig', {}, (c, t) => new NetworkServer(c).getConnectionConfig(t)),
+  q('connection-status', 'appcgi.netsvr.conn.status', {}, (c, t) => new NetworkServer(c).getConnectionStatus(t)),
+  q('ddns-providers', 'appcgi.netsvr.ddns.provider.list', {}, (c, t) => new NetworkServer(c).listDdnsProviders(t)),
+  q('ddns-records-default', 'appcgi.netsvr.ddns.record.list', { data: { page: 1, pageSize: 200 } }, (c, t) => new NetworkServer(c).listDdnsRecords(undefined, undefined, t)),
+  q('ddns-records-large', 'appcgi.netsvr.ddns.record.list', { data: { page: 1, pageSize: 999 } }, (c, t) => new NetworkServer(c).listDdnsRecords(1, 999, t)),
+  q('firewall', 'appcgi.security.firewall.getting', {}, (c, t) => new Security(c).getFirewall(t)),
+  q('process-traffic', 'appcgi.security.flowaudit.traffic', { data: PROCESSES }, (c, t) => new Security(c).getProcessTraffic(PROCESSES, t)),
+  q('restore-info', 'appcgi.sysrestore.getInfo', {}, (c, t) => new SystemRestore(c).getInfo(t)),
+];
+
+export const ALL_QUERY_CASES: QueryCase[] = [
+  ...EXISTING_QUERY_CASES,
+  ...NEW_QUERY_CASES,
+];
