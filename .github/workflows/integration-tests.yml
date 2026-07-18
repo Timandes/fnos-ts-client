@@ -30,18 +30,26 @@ jobs:
           python-version: '3.11'
 
       - name: Clone fnos-mock-server
+        env:
+          FNOS_MOCK_SERVER_REF: d9592a05a8e07082b954921acfae3a9a915f3c01
         run: |
-          git clone https://github.com/Timandes/fnos-mock-server.git ../fnos-mock-server
+          git init ../fnos-mock-server
+          cd ../fnos-mock-server
+          git remote add origin https://github.com/Timandes/fnos-mock-server.git
+          git fetch --depth 1 origin "$FNOS_MOCK_SERVER_REF"
+          git checkout --detach FETCH_HEAD
 
       - name: Install mock server dependencies
         working-directory: ../fnos-mock-server
         run: |
-          uv sync
+          uv sync --python 3.11
 
       - name: Start mock server
         working-directory: ../fnos-mock-server
+        env:
+          FNOS_MOCK_TWOFA_USERS: twofauser
         run: |
-          uv run python -m server.main > /tmp/mock-server.log 2>&1 &
+          uv run --python 3.11 python -m server.main > /tmp/mock-server.log 2>&1 &
           echo $! > /tmp/mock-server.pid
           echo "Mock server started with PID: $(cat /tmp/mock-server.pid)"
 
