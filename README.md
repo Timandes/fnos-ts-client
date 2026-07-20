@@ -374,7 +374,7 @@ npm run tool:disk-temperatures -- --user USER --password PASSWORD -e HOST:PORT
 
 ### 磁盘温度诊断
 
-`tools/list_disk_temperatures.ts`（npm 命令 `tool:disk-temperatures`）按以下顺序读取温度：
+`dist/tools/list_disk_temperatures.js`（npm 命令 `tool:disk-temperatures`）按以下顺序读取温度：
 
 1. `ResourceMonitor.disk().data.disk[].temp`；
 2. `Store.getDiskSmart().smart.temperature.current`；

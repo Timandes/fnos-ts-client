@@ -43,4 +43,4 @@ export { SystemRestore } from './system_restore.js';
 
 export type { ConnectionType, LoginResponse } from './client.js';
 
-export const version = '0.3.0';
+export const version = '0.4.0';
