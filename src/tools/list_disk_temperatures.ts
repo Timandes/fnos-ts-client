@@ -1,4 +1,4 @@
-import { FnosClient, ResourceMonitor, Store } from '../src/index.js';
+import { FnosClient, ResourceMonitor, Store } from '../index.js';
 import { connectClient, loginWithTwofa, parseToolArgs, type ToolArgs } from './common.js';
 
 export const MONITOR_SOURCE = 'ResourceMonitor.disk().data.disk[].temp';
@@ -182,7 +182,7 @@ export async function run(
 }
 
 function printHelp(): void {
-  console.log('Usage: tsx tools/list_disk_temperatures.ts --user USER --password PASSWORD [-e HOST:PORT] [--code 123456] [--trust-device] [--use-ssl] [--skip-ssl-verify true|false] [--debug]');
+  console.log('Usage: node dist/tools/list_disk_temperatures.js --user USER --password PASSWORD [-e HOST:PORT] [--code 123456] [--trust-device] [--use-ssl] [--skip-ssl-verify true|false] [--debug]');
 }
 
 const isDirectExecution = /list_disk_temperatures\.(?:ts|js)$/.test(process.argv[1] ?? '');

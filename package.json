@@ -1,9 +1,20 @@
 {
   "name": "fnos",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "TypeScript client for Fnos WebSocket communication",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "CHANGELOG.md",
+    "dist/*.js",
+    "dist/*.js.map",
+    "dist/*.d.ts",
+    "dist/*.d.ts.map",
+    "dist/tools/*.js",
+    "dist/tools/*.js.map",
+    "dist/tools/*.d.ts",
+    "dist/tools/*.d.ts.map"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "find dist/test -name '*.test.js' -type f | xargs node --test --test-concurrency=1 && npm run test:tools",
@@ -11,7 +22,7 @@
     "test:integration": "find dist/test/integration -name '*.test.js' -type f | xargs node --test --test-concurrency=1",
     "check:extras": "tsc -p tsconfig.extras.json",
     "test:tools": "tsx --test tools/test/*.test.ts",
-    "tool:disk-temperatures": "tsx tools/list_disk_temperatures.ts",
+    "tool:disk-temperatures": "node dist/tools/list_disk_temperatures.js",
     "test:watch": "node --test --watch dist/test/**/*.test.js",
     "example": "tsx examples/demo.ts"
   },

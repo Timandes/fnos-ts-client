@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { FnosClient } from '../../src/index.js';
-import { connectClient, loginWithTwofa, type ToolArgs } from '../common.js';
+import { connectClient, loginWithTwofa, type ToolArgs } from '../../src/tools/common.js';
 
 const args: ToolArgs = {
   user: 'alice', password: 'password', endpoint: 'nas.example.com:5666',

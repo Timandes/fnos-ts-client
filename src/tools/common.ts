@@ -1,6 +1,6 @@
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
-import { FnosClient, type LoginResponse } from '../src/index.js';
+import { FnosClient, type LoginResponse } from '../index.js';
 
 export interface ToolArgs {
   user: string;

@@ -15,7 +15,7 @@ describe('synchronized documentation', () => {
   it('keeps the package version and records Unreleased changes', async () => {
     const pkg = JSON.parse(await readFile('package.json', 'utf8'));
     const changelog = await readFile('CHANGELOG.md', 'utf8');
-    assert.equal(pkg.version, '0.3.0');
+    assert.equal(pkg.version, '0.4.0');
     assert.match(changelog, /## \[Unreleased\]/);
     assert.match(changelog, /71 个只读查询/);
   });

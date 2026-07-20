@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {
   collectDiskTemperatures, formatDiskTemperatures, redact, run,
   type ToolDependencies,
-} from '../list_disk_temperatures.js';
-import type { ToolArgs } from '../common.js';
+} from '../../src/tools/list_disk_temperatures.js';
+import type { ToolArgs } from '../../src/tools/common.js';
 
 describe('disk temperature diagnostic', () => {
   it('uses monitor temperature without SMART', async () => {
