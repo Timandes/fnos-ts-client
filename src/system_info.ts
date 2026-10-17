@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { FnosClient } from './client.js';
+import type { FnosRequestClient } from './request_client.js';
 
 /**
  * 系统信息类
  */
 export class SystemInfo {
-  private client: FnosClient;
+  private client: FnosRequestClient;
 
-  constructor(client: FnosClient) {
+  constructor(client: FnosRequestClient) {
     this.client = client;
   }
 

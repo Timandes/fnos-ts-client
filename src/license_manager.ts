@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { FnosClient } from './client.js';
+import type { FnosRequestClient } from './request_client.js';
 import { requirePositiveInteger } from './validation.js';
 
 export class LicenseManager {
-  constructor(private readonly client: FnosClient) {}
+  constructor(private readonly client: FnosRequestClient) {}
 
   async list(
     page: number = 1,

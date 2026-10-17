@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { FnosClient } from './client.js';
+import type { FnosRequestClient } from './request_client.js';
 import { requireNonEmptyString } from './validation.js';
 
 /**
  * 网络类
  */
 export class Network {
-  private client: FnosClient;
+  private client: FnosRequestClient;
 
-  constructor(client: FnosClient) {
+  constructor(client: FnosRequestClient) {
     this.client = client;
   }
 

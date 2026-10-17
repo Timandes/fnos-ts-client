@@ -20,6 +20,7 @@ import path from 'node:path';
 
 const exec = promisify(execFile);
 const examples = [
+  'oauth.ts',
   'backup_manager.ts',
   'download_center.ts',
   'ip_blocker.ts',

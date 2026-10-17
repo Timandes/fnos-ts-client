@@ -19,6 +19,9 @@
 fnos/
 ├── src/
 │   ├── client.ts           # FnosClient 核心类（支持 SSL/WSS）
+│   ├── oauth_adapter.ts    # fnOS OAuth 授权、换码和刷新适配
+│   ├── oauth_client.ts     # OAuth Bearer HTTP API 客户端
+│   ├── request_client.ts   # 两种传输共用的请求接口
 │   ├── crypto.ts           # 加密工具类 (RSA + AES + HMAC)
 │   ├── exceptions.ts       # 异常类
 │   ├── resource_monitor.ts # 资源监控类
@@ -151,6 +154,74 @@ try {
 ```
 
 最终登录成功只要求响应中包含 `token` 和 `secret`，`longToken` 可以缺失。
+
+### OAuth HTTP 客户端
+
+`FnosOAuthAdapter` 处理飞牛特有的授权 URL、换码和刷新参数；开源库
+[`oauth4webapi`](https://github.com/panva/oauth4webapi) 提供 PKCE 和 Bearer 请求能力。
+`FnosOAuthClient` 使用拿到的 token 调用 `/ogh/ac/w`，可直接传给 `User`、
+`SystemInfo` 等现有业务模块。
+
+完整的交互式流程见 [examples/oauth.ts](examples/oauth.ts)。运行后打开终端显示的
+链接，在浏览器完成登录和授权，再将一次性授权码输入终端：
+
+```bash
+npm run example:oauth -- https://nas.example.com:5667
+
+# HTTP 测试环境必须显式允许明文 HTTP
+npm run example:oauth -- http://nas.example.com:5666 --allow-insecure-http
+
+npm run example:oauth -- --help
+```
+
+示例完成授权后调用 `User.getInfo()`，成功时输出 `oauth: ok`、`api: succ` 和响应字段名。
+授权码由终端交互读取，token 保留在进程内。
+
+```typescript
+import { createInterface } from 'node:readline/promises';
+import { FnosOAuthAdapter, FnosOAuthClient, User } from 'fnos';
+
+const adapter = new FnosOAuthAdapter({ endpoint: 'https://nas.example.com:5667' });
+const pending = await adapter.createAuthorizationRequest();
+console.log(pending.url); // 由用户在浏览器完成授权
+const input = createInterface({ input: process.stdin, output: process.stdout });
+let code: string;
+try {
+  code = await input.question('Authorization code: ');
+} finally {
+  input.close();
+}
+const session = await adapter.exchangeCode(code, pending);
+const client = new FnosOAuthClient(adapter, session);
+console.log(await new User(client).getInfo());
+```
+
+授权 URL 不包含 `redirect_uri`，通过用户手动输入授权码完成换码。
+授权码和 PKCE verifier 只在本次交互中使用，授权码 5 分钟内有效。
+`FnosOAuthClient` 在 access token 临期或 API 返回 401 时刷新 token，401 最多重试一次。
+默认 session 只在内存中；如需跨进程保留，请自行安全保存 `session`，并通过
+`saveSession` 回调保存刷新后的 session。重新加载 session 时要复用原来的 `deviceId`
+和 `clientId`；设备 ID 可从 `adapter.deviceId` 读取，示例支持通过 `--device-id` 传入。
+SDK 使用 HTTP 时须显式设置 `allowInsecureHttp: true`。默认 client ID 和 scopes 与
+trim-cli 一致，可通过 `clientId`、`scopes` 配置。
+
+#### 现有 API 的兼容范围
+
+SDK 的 21 个业务类、111 个方法都通过 `FnosRequestClient.requestPayloadWithResponse()`
+发送请求，因此构造业务类时可以传入 `FnosClient` 或 `FnosOAuthClient`，方法参数保持一致：
+
+```typescript
+const user = new User(client); // client 可以是任一种客户端
+const info = await user.getInfo();
+```
+
+实际请求是否成功，还取决于 token 的 scope、账号权限和当前 fnOS OAuth 网关是否开放该端点。
+SDK 接口兼容不等于全部端点已经通过真机验证。目前在 fnOS **1.2.0800** 上完成了
+授权换码和 `user.info` 验证；单元测试检查了 71 个只读端点通过 OAuth HTTP 发送时的
+请求参数与响应解包。其他端点的真机兼容性仍需逐项确认。
+
+`connect()`、账号密码 `login()`、`loginViaToken()`、`onMessage()`、心跳和重连属于
+`FnosClient` 的 WebSocket 连接能力；`FnosOAuthClient` 提供的是业务请求接口。
 
 ### SSL/WSS 连接
 

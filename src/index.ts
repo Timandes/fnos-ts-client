@@ -17,6 +17,11 @@
  */
 
 export { FnosClient } from './client.js';
+export { FnosOAuthAdapter, FNOS_OAUTH_CLIENT_ID, FNOS_OAUTH_SCOPES } from './oauth_adapter.js';
+export { FnosOAuthClient } from './oauth_client.js';
+export type { FnosPendingAuthorization, FnosOAuthSession, FnosOAuthAdapterOptions } from './oauth_adapter.js';
+export type { FnosOAuthClientOptions } from './oauth_client.js';
+export type { FnosRequestClient } from './request_client.js';
 export { HTTPSRequiredError, NotConnectedError } from './exceptions.js';
 export { Crypto } from './crypto.js';
 export { ResourceMonitor } from './resource_monitor.js';

@@ -15,12 +15,13 @@
 import assert from 'node:assert/strict';
 import { mock } from 'node:test';
 import { FnosClient } from '../../client.js';
+import type { FnosRequestClient } from '../../request_client.js';
 
 export interface QueryCase {
   name: string;
   endpoint: string;
   payload: Record<string, unknown>;
-  invoke: (client: FnosClient, timeout: number) => Promise<unknown>;
+  invoke: (client: FnosRequestClient, timeout: number) => Promise<unknown>;
 }
 
 export async function assertQueryCase(query: QueryCase): Promise<void> {

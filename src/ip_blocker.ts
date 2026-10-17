@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { FnosClient } from './client.js';
+import type { FnosRequestClient } from './request_client.js';
 
 export class IPBlocker {
-  constructor(private readonly client: FnosClient) {}
+  constructor(private readonly client: FnosRequestClient) {}
 
   async listAllowedAddresses(timeout: number = 10000): Promise<any> {
     return this.client.requestPayloadWithResponse(
