@@ -18,6 +18,7 @@ import type { IncomingMessage } from 'node:http';
 import { Crypto } from './crypto.js';
 import { HTTPSRequiredError, NotConnectedError } from './exceptions.js';
 import logger from './logger.js';
+import type { FnosRequestClient } from './request_client.js';
 
 export type ConnectionType = 'main' | 'timer' | 'file';
 
@@ -61,7 +62,7 @@ interface TwofaPending {
   deviceName: string;
 }
 
-export class FnosClient {
+export class FnosClient implements FnosRequestClient {
   private type: ConnectionType;
   private ws: WebSocket | null = null;
   private publicKey: string | null = null;
