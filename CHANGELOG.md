@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- 新增 `FnosOAuthAdapter`，处理 fnOS 特有的 PKCE 授权 URL、授权码换 token 和 token 刷新。
+- 新增 `FnosOAuthClient`，通过 Bearer token 调用 `/ogh/ac/w`，支持临期刷新、HTTP 401 后刷新并重试一次，以及单元素响应数组解包。
+- 引入开源 `oauth4webapi`，提供 PKCE 和 Bearer 请求能力。
+- 新增交互式 OAuth 示例 `examples/oauth.ts` 和 `npm run example:oauth`，支持帮助信息、显式允许 HTTP 测试和指定设备 ID。
+
+### Changed
+
+- 21 个业务类改用共享的 `FnosRequestClient` 接口，111 个现有方法可接收 WebSocket 或 OAuth 客户端；服务端可用范围仍受 scope、账号权限和网关支持限制。
+- README 补充 OAuth 授权流程、业务模块复用方式、session 保存要求及验证范围。
+
 ## [0.4.0] - 2026-07-20
 
 ### Added
