@@ -152,6 +152,37 @@ try {
 
 最终登录成功只要求响应中包含 `token` 和 `secret`，`longToken` 可以缺失。
 
+### OAuth HTTP 客户端（fnOS 1.2）
+
+`FnosOAuthAdapter` 处理飞牛特有的授权 URL、换码和刷新参数；开源库
+[`oauth4webapi`](https://github.com/panva/oauth4webapi) 提供 PKCE 和 Bearer 请求能力。
+`FnosOAuthClient` 使用拿到的 token 调用 `/ogh/ac/w`，可直接传给 `User`、
+`SystemInfo` 等现有业务模块。已有 WebSocket `FnosClient` 仍可使用。
+
+```typescript
+import { FnosOAuthAdapter, FnosOAuthClient, User } from 'fnos';
+
+const adapter = new FnosOAuthAdapter({ endpoint: 'https://nas.example.com:5667' });
+const pending = await adapter.createAuthorizationRequest();
+console.log(pending.url); // 由用户在浏览器完成授权
+const code = await readCodeFromTerminal(); // 示例：从交互式终端读取，不放入命令参数
+const session = await adapter.exchangeCode(code, pending);
+const client = new FnosOAuthClient(adapter, session);
+console.log(await new User(client).getInfo());
+```
+
+授权码和 PKCE verifier 只在本次交互中使用，授权码 5 分钟内有效。
+`FnosOAuthClient` 在 access token 临期或 API 返回 401 时刷新 token，401 最多重试一次。
+默认 session 只在内存中；如需跨进程保留，请自行安全保存 `session`，并通过
+`saveSession` 回调保存刷新后的 session。重新加载 session 时要复用原来的 `deviceId`
+和 `clientId`。HTTP 测试环境须显式设置 `allowInsecureHttp: true`。
+
+本仓库提供一次性真机验证命令，授权码只输入交互式终端，不会打印 token：
+
+```bash
+npm run example:oauth -- https://nas.example.com:5667
+```
+
 ### SSL/WSS 连接
 
 ```typescript

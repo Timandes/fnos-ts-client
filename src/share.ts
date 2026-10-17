@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { FnosClient } from './client.js';
+import type { FnosRequestClient } from './request_client.js';
 import { requirePositiveInteger } from './validation.js';
 
 /**
  * 共享类
  */
 export class Share {
-  private client: FnosClient;
+  private client: FnosRequestClient;
 
-  constructor(client: FnosClient) {
+  constructor(client: FnosRequestClient) {
     this.client = client;
   }
 

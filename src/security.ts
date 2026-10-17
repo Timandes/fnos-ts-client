@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { FnosClient } from './client.js';
+import type { FnosRequestClient } from './request_client.js';
 import { copyRecordList } from './validation.js';
 
 export class Security {
-  constructor(private readonly client: FnosClient) {}
+  constructor(private readonly client: FnosRequestClient) {}
 
   async getFirewall(timeout: number = 10000): Promise<any> {
     return this.client.requestPayloadWithResponse(
