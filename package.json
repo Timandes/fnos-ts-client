@@ -1,7 +1,7 @@
 {
   "name": "fnos",
-  "version": "0.4.0",
-  "description": "TypeScript client for Fnos WebSocket communication",
+  "version": "0.5.0",
+  "description": "TypeScript client for fnOS WebSocket and OAuth HTTP APIs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
