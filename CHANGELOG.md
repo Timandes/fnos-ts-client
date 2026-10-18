@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-18
+
 ### Added
 
 - 新增 `FnosOAuthAdapter`，处理 fnOS 特有的 PKCE 授权 URL、授权码换 token 和 token 刷新。

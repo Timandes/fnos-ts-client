@@ -157,6 +157,8 @@ try {
 
 ### OAuth HTTP 客户端
 
+自 **0.5.0** 起，SDK 支持 OAuth 授权和 HTTP 业务请求。
+
 `FnosOAuthAdapter` 处理飞牛特有的授权 URL、换码和刷新参数；开源库
 [`oauth4webapi`](https://github.com/panva/oauth4webapi) 提供 PKCE 和 Bearer 请求能力。
 `FnosOAuthClient` 使用拿到的 token 调用 `/ogh/ac/w`，可直接传给 `User`、

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /**
- * Fnos - A TypeScript client for Fnos WebSocket communication
+ * Fnos - A TypeScript client for fnOS WebSocket and OAuth HTTP APIs
  */
 
 export { FnosClient } from './client.js';
@@ -48,4 +48,4 @@ export { SystemRestore } from './system_restore.js';
 
 export type { ConnectionType, LoginResponse } from './client.js';
 
-export const version = '0.4.0';
+export const version = '0.5.0';
